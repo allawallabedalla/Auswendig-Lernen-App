@@ -20,7 +20,7 @@ const chk = (c, m) => { if (!c) { pass = false; console.log('FAIL: ' + m); } els
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } }); // SW erlaubt (Default)
 const p = await ctx.newPage();
-await p.addInitScript(() => localStorage.setItem('adt_onboarded', '1'));
+await p.addInitScript(() => localStorage.setItem('lern_onboarded', '1'));
 await seedContent(p);   // Zugangsschutz für den Test neutralisieren (siehe seed-content.mjs)
 const errors = [];
 p.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
@@ -112,7 +112,7 @@ chk(await p.evaluate(() => updateAvailable('99.9.9') === true && updateAvailable
   const uctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const up = await uctx.newPage();
   up.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
-  await up.addInitScript(() => localStorage.setItem('adt_onboarded', '1'));
+  await up.addInitScript(() => localStorage.setItem('lern_onboarded', '1'));
   await seedContent(up);
   await up.goto(origin + '/index.html', { waitUntil: 'networkidle' });
   await up.evaluate(() => navigator.serviceWorker.ready);

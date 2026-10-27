@@ -1,29 +1,26 @@
 /*
- * Fragen-Datenbank – ADT Tumordokumentar/in Prüfungsvorbereitung
+ * Fragen-Datenbank – Beispiel-Inhalte des Lern-Trainers
  * ---------------------------------------------------------------
- * WICHTIG: Diese Fragen sind sorgfältig nach etablierten, stabilen
- * Standards (UICC/TNM, ICD-O-3, ICD-10, ADT/GEKID-Basisdatensatz,
- * § 65c SGB V / KFRG) formuliert. Sie ersetzen NICHT das offizielle
- * ADT-Prüfungsfragentool, sondern dienen dem Üben der Inhalte.
+ * Diese Fragen zeigen alle Fragetypen der App. Eigene Inhalte lassen sich in der
+ * App importieren (Einstellungen → Lerninhalte) oder hier direkt eintragen.
  *
  * Struktur eines Eintrags:
  *   id          eindeutige ID (nicht ändern – wird für Fortschritt genutzt)
- *   topic       Themen-Schlüssel (siehe TOPICS unten)
+ *   topic       Themen-Schlüssel (siehe SAMPLE_TOPICS unten)
  *   difficulty  1 = leicht, 2 = mittel, 3 = schwer
  *   type        "single"  = genau eine richtige Antwort
- *               "multi"   = eine ODER mehrere richtige Antworten (Prüfungsformat!)
- *               "numeric" = Rechen-/Anwendungsaufgabe mit freier Zahl-Eingabe
- *               "code"    = Kodier-Aufgabe mit freier Kode-Eingabe (ICD-10, ICD-O-3, OPS)
+ *               "multi"   = eine ODER mehrere richtige Antworten
+ *               "numeric" = Rechenaufgabe mit freier Zahl-Eingabe
+ *               "code"    = Eingabe-Aufgabe: Antwort wird als Text eingetippt
  *   question    Fragetext
  *   options     Array der Antwortmöglichkeiten            (single/multi)
  *   correct     Array der Indizes (0-basiert) der RICHTIGEN Antworten (single/multi)
  *   answer      erwartete Zahl                            (numeric)
  *   tolerance   erlaubte Abweichung ± (optional, Standard 0) (numeric)
  *   unit        Einheit zur Anzeige (optional)            (numeric)
- *   answer      erwarteter Kode als Text, z. B. "C50.4"    (code)
- *   accept      weitere gültige Kodes (optional)           (code)
- *               Nicht nötig für andere Schreibweisen desselben Kodes: Punkte,
- *               Leerzeichen und Groß-/Kleinschreibung ignoriert die App ohnehin.
+ *   answer      erwartete Antwort als Text, z. B. "Paris"  (code)
+ *   accept      weitere gültige Antworten (optional)       (code)
+ *               Groß-/Kleinschreibung, Leerzeichen und Satzzeichen ignoriert die App ohnehin.
  *   placeholder Beispiel im leeren Feld (optional)         (code)
  *   explanation Erklärung – vermittelt den Lerninhalt (inkl. Rechenweg bei numeric)
  *
@@ -31,711 +28,184 @@
  */
 
 const SAMPLE_TOPICS = {
-  grundlagen:    { name: "Grundlagen der Onkologie",        icon: "🧬", color: "#5b8def" },
-  tnm:           { name: "TNM-Klassifikation (UICC)",       icon: "📐", color: "#e8734a" },
-  icdo:          { name: "ICD-O-3 (Topografie & Morphologie)", icon: "🔬", color: "#7c5cbf" },
-  icd10:         { name: "ICD-10 & Dignität",               icon: "📖", color: "#3fa796" },
-  grading:       { name: "Grading, Residual- & Zusatzcodes", icon: "🎯", color: "#d9a441" },
-  register:      { name: "Krebsregister & Meldewesen",      icon: "🏛️", color: "#c0577a" },
-  epidemiologie: { name: "Epidemiologie & Statistik",       icon: "📊", color: "#4a90a4" },
-  therapie:      { name: "Therapie & Verlauf",              icon: "💊", color: "#6aa84f" },
-  datenschutz:   { name: "Datenschutz & Recht",             icon: "🔒", color: "#8a8f99" },
+  lernen:    { name: "Lerntechniken",   icon: "🧠", color: "#5b8def" },
+  geografie: { name: "Geografie",       icon: "🌍", color: "#3fa796" },
+  englisch:  { name: "Englisch-Vokabeln", icon: "🇬🇧", color: "#e8734a" },
+  mathe:     { name: "Mathe & Rechnen", icon: "➗", color: "#7c5cbf" },
+  wissen:    { name: "Allgemeinwissen", icon: "💡", color: "#d9a441" },
 };
 
 const SAMPLE_QUESTIONS = [
-  // ===================== GRUNDLAGEN =====================
+  // ===================== LERNTECHNIKEN =====================
   {
-    id: "gr-001", topic: "grundlagen", difficulty: 1, type: "single",
-    question: "Wofür steht die Abkürzung „ADT“ im Kontext der Tumordokumentation?",
+    id: "gr-001", topic: "lernen", difficulty: 1, type: "single",
+    question: "Was bedeutet „Spaced Repetition“?",
     options: [
-      "Arbeitsgemeinschaft Deutscher Tumorzentren e. V.",
-      "Allgemeine Deutsche Tumorklassifikation",
-      "Anerkannte Diagnose-Terminologie",
-      "Ausschuss für Datenschutz in Tumorregistern",
+      "Wiederholen in wachsenden Zeitabständen",
+      "Alles an einem Tag möglichst oft wiederholen",
+      "Nur den schwersten Stoff lernen",
+      "Lernen mit Musik im Hintergrund",
     ],
     correct: [0],
-    explanation: "Die ADT (Arbeitsgemeinschaft Deutscher Tumorzentren e. V.) gibt u. a. den ADT/GEKID-Basisdatensatz heraus und verantwortet das Zertifikat „Tumordokumentar/in“.",
+    explanation: "Spaced Repetition verteilt Wiederholungen auf wachsende Abstände – genau dann, wenn man den Stoff sonst zu vergessen droht. Diese App macht das automatisch (Leitner-System).",
   },
   {
-    id: "gr-002", topic: "grundlagen", difficulty: 1, type: "multi",
-    question: "Welche Aussagen zu bösartigen (malignen) Tumoren treffen zu?",
+    id: "gr-002", topic: "lernen", difficulty: 2, type: "multi",
+    question: "Welche Methoden verbessern das Behalten nachweislich?",
     options: [
-      "Sie können infiltrierend/invasiv in Nachbargewebe einwachsen.",
-      "Sie können Metastasen bilden.",
-      "Sie sind grundsätzlich vollständig abgekapselt und wachsen nur verdrängend.",
-      "Sie können erneut auftreten (Rezidiv).",
+      "Aktives Abrufen (sich selbst abfragen)",
+      "Verteiltes Lernen über mehrere Tage",
+      "Text nur mehrfach durchlesen",
+      "Stoff in eigenen Worten erklären",
     ],
     correct: [0, 1, 3],
-    explanation: "Maligne Tumoren wachsen infiltrierend/destruierend, metastasieren und können rezidivieren. Das rein verdrängende, abgekapselte Wachstum ist typisch für benigne (gutartige) Tumoren.",
+    explanation: "Abrufen, Verteilen und Erklären wirken stark. Reines Wiederlesen fühlt sich gut an, bringt aber wenig – es erzeugt Wiedererkennen statt Wissen.",
   },
   {
-    id: "gr-003", topic: "grundlagen", difficulty: 2, type: "single",
-    question: "Was bezeichnet der Begriff „Primärtumor“?",
-    options: [
-      "Der zuerst diagnostizierte Tumor, unabhängig vom Ursprung",
-      "Der Tumor am Ort seiner Entstehung (Ursprungsgewebe)",
-      "Jede Fernmetastase eines Tumors",
-      "Der größte messbare Tumorherd im Körper",
-    ],
+    id: "gr-003", topic: "lernen", difficulty: 1, type: "single",
+    question: "Wie lange dauert eine klassische Pomodoro-Lerneinheit?",
+    options: ["10 Minuten", "25 Minuten", "45 Minuten", "90 Minuten"],
     correct: [1],
-    explanation: "Der Primärtumor ist der Tumor am Ort seiner Entstehung. Metastasen (Tochtergeschwülste) gehen von ihm aus, sind aber selbst keine Primärtumoren.",
+    explanation: "Die Pomodoro-Technik arbeitet mit 25 Minuten Fokus, dann 5 Minuten Pause. Nach vier Runden folgt eine längere Pause.",
   },
   {
-    id: "gr-004", topic: "grundlagen", difficulty: 2, type: "single",
-    question: "Wie nennt man einen bösartigen Tumor, der vom Epithelgewebe (Deckgewebe/Drüsen) ausgeht?",
-    options: ["Sarkom", "Karzinom", "Lymphom", "Blastom"],
+    id: "gr-004", topic: "lernen", difficulty: 2, type: "single",
+    question: "Wer beschrieb als Erster die „Vergessenskurve“?",
+    options: ["Sigmund Freud", "Hermann Ebbinghaus", "Jean Piaget", "Iwan Pawlow"],
     correct: [1],
-    explanation: "Karzinome gehen von Epithelgewebe aus (häufigste Krebsgruppe). Sarkome entstehen aus Binde-/Stützgewebe (mesenchymal), Lymphome aus dem lymphatischen System.",
+    explanation: "Hermann Ebbinghaus untersuchte 1885 im Selbstversuch, wie schnell Gelerntes vergessen wird – die Grundlage für Spaced Repetition.",
   },
   {
-    id: "gr-005", topic: "grundlagen", difficulty: 2, type: "single",
-    question: "Wie nennt man einen bösartigen Tumor des Binde-, Stütz- oder Muskelgewebes (mesenchymalen Ursprungs)?",
-    options: ["Karzinom", "Adenom", "Sarkom", "Papillom"],
+    id: "gr-005", topic: "lernen", difficulty: 1, type: "code",
+    question: "Wie heißt die Lerntechnik mit 25-Minuten-Einheiten? (ein Wort)",
+    answer: "Pomodoro", placeholder: "Antwort eintippen",
+    explanation: "Pomodoro (italienisch „Tomate“) – benannt nach der Küchenuhr in Tomatenform, mit der Francesco Cirillo die Methode erfand.",
+  },
+
+  // ===================== GEOGRAFIE =====================
+  {
+    id: "geo-001", topic: "geografie", difficulty: 1, type: "single",
+    question: "Was ist die Hauptstadt von Australien?",
+    options: ["Sydney", "Melbourne", "Canberra", "Perth"],
     correct: [2],
-    explanation: "Sarkome sind maligne Tumoren mesenchymalen Ursprungs (z. B. Knochen, Muskel, Fettgewebe). Adenom und Papillom sind gutartige epitheliale Tumoren.",
-  },
-
-  // ===================== TNM =====================
-  {
-    id: "tnm-001", topic: "tnm", difficulty: 1, type: "single",
-    question: "Wofür stehen die Buchstaben T, N und M im TNM-System der UICC?",
-    options: [
-      "Tumorgröße, Nekrose, Mitoserate",
-      "Primärtumor, regionäre Lymphknoten, Fernmetastasen",
-      "Tumorstadium, Nachsorge, Morphologie",
-      "Topografie, Nodalstatus, Malignität",
-    ],
-    correct: [1],
-    explanation: "T = Ausdehnung des Primärtumors, N = regionäre Lymphknoten (Nodi), M = Fernmetastasen. Das TNM-System der UICC beschreibt die anatomische Ausbreitung.",
+    explanation: "Canberra wurde als Kompromiss zwischen den Rivalen Sydney und Melbourne zur Hauptstadt geplant.",
   },
   {
-    id: "tnm-002", topic: "tnm", difficulty: 2, type: "single",
-    question: "Was bedeutet das Präfix „c“ in „cTNM“?",
-    options: [
-      "Klinische Klassifikation (vor Therapie, aus Untersuchung/Bildgebung)",
-      "Pathologische Klassifikation nach Operation",
-      "Klassifikation eines Rezidivs",
-      "Klassifikation nach Autopsie",
-    ],
-    correct: [0],
-    explanation: "„c“ (clinical) steht für die klinische Klassifikation vor Therapie auf Basis von Untersuchung, Bildgebung, Endoskopie etc. „p“ (pathological) beruht auf der histopathologischen Untersuchung nach Operation.",
-  },
-  {
-    id: "tnm-003", topic: "tnm", difficulty: 2, type: "single",
-    question: "Wofür steht das Präfix „p“ in „pTNM“?",
-    options: [
-      "Für die palliative Situation",
-      "Für die pathologische (histopathologische) Klassifikation nach Resektion",
-      "Für den Primärtumor",
-      "Für eine prognostische Schätzung",
-    ],
-    correct: [1],
-    explanation: "„p“ = pathologische Klassifikation, die auf der feingeweblichen Untersuchung des Operationspräparats beruht. Für pN ist die Entnahme und Untersuchung von Lymphknoten erforderlich.",
-  },
-  {
-    id: "tnm-004", topic: "tnm", difficulty: 2, type: "single",
-    question: "Was bedeutet das Präfix „y“ in der TNM-Klassifikation (z. B. ypT2)?",
-    options: [
-      "Der Tumor wurde bei einer Autopsie festgestellt.",
-      "Die Klassifikation erfolgt während oder nach initialer multimodaler (neoadjuvanter) Therapie.",
-      "Es handelt sich um ein Rezidiv.",
-      "Es liegen mehrere Primärtumoren vor.",
-    ],
-    correct: [1],
-    explanation: "Das „y“-Präfix kennzeichnet die Klassifikation während oder nach neoadjuvanter (präoperativer) Therapie, z. B. ypT nach neoadjuvanter Chemo-/Strahlentherapie.",
-  },
-  {
-    id: "tnm-005", topic: "tnm", difficulty: 2, type: "single",
-    question: "Was kennzeichnet das Präfix „r“ in der TNM-Klassifikation (z. B. rT1)?",
-    options: [
-      "Eine Rest-Erkrankung (Residualtumor)",
-      "Ein Rezidiv (erneutes Auftreten nach krankheitsfreiem Intervall)",
-      "Eine radiologisch gesicherte Diagnose",
-      "Eine regionäre Ausbreitung",
-    ],
-    correct: [1],
-    explanation: "Das „r“-Präfix kennzeichnet die Klassifikation eines Rezidivtumors nach einem krankheitsfreien Intervall. Der Residualtumor nach Behandlung wird dagegen mit der R-Klassifikation (R0–R2) beschrieben.",
-  },
-  {
-    id: "tnm-006", topic: "tnm", difficulty: 1, type: "single",
-    question: "Was bedeutet „Tis“ in der TNM-Klassifikation?",
-    options: [
-      "Primärtumor kann nicht beurteilt werden",
-      "Kein Anhalt für Primärtumor",
-      "Carcinoma in situ",
-      "Tumor mit Infiltration in Nachbarorgane",
-    ],
-    correct: [2],
-    explanation: "Tis = Carcinoma in situ: eine nicht-invasive Neubildung, die die Basalmembran (noch) nicht durchbrochen hat. T0 = kein Anhalt für Primärtumor, TX = Primärtumor nicht beurteilbar.",
-  },
-  {
-    id: "tnm-007", topic: "tnm", difficulty: 2, type: "single",
-    question: "Was bedeutet „TX“?",
-    options: [
-      "Der Primärtumor kann nicht beurteilt werden.",
-      "Es liegt kein Primärtumor vor.",
-      "Der Tumor ist maximal ausgedehnt.",
-      "Der Tumor ist ein Carcinoma in situ.",
-    ],
-    correct: [0],
-    explanation: "TX bedeutet, dass der Primärtumor nicht beurteilt werden kann (fehlende Information). T0 heißt dagegen: kein Anhalt für einen Primärtumor.",
-  },
-  {
-    id: "tnm-008", topic: "tnm", difficulty: 1, type: "single",
-    question: "Was bedeutet die Kategorie „M1“?",
-    options: [
-      "Keine Fernmetastasen",
-      "Fernmetastasen vorhanden",
-      "Fernmetastasen nicht beurteilbar",
-      "Nur regionäre Lymphknotenmetastasen",
-    ],
-    correct: [1],
-    explanation: "M1 = Fernmetastasen nachgewiesen. M0 = keine Fernmetastasen. Regionäre Lymphknoten werden über die N-Kategorie, nicht über M erfasst.",
-  },
-  {
-    id: "tnm-009", topic: "tnm", difficulty: 3, type: "multi",
-    question: "Welche Aussagen zur M-Kategorie sind nach aktueller UICC-Regel korrekt?",
-    options: [
-      "M0 bedeutet: keine Fernmetastasen.",
-      "M1 bedeutet: Fernmetastasen vorhanden.",
-      "„MX“ soll nach aktueller UICC-Empfehlung nicht mehr verwendet werden.",
-      "pM0 kann allein aufgrund einer klinischen Untersuchung vergeben werden.",
-    ],
-    correct: [0, 1, 2],
-    explanation: "M0 = keine, M1 = vorhandene Fernmetastasen. Die Kategorie „MX“ gilt als entbehrlich und soll nicht mehr genutzt werden. pM0 gibt es faktisch nur bei Autopsie – eine klinische Einschätzung ohne Metastasen ist cM0, nicht pM0.",
-  },
-  {
-    id: "tnm-010", topic: "tnm", difficulty: 3, type: "single",
-    question: "Welches Suffix kennzeichnet das gleichzeitige Vorliegen multipler simultaner Primärtumoren in einem Organ (z. B. T2(m))?",
-    options: ["(m)", "(y)", "(is)", "(r)"],
-    correct: [0],
-    explanation: "Das Suffix „(m)“ in Klammern kennzeichnet multiple simultane Primärtumoren in einem anatomischen Bezirk. Alternativ kann die Anzahl angegeben werden, z. B. T2(3).",
-  },
-  {
-    id: "tnm-011", topic: "tnm", difficulty: 2, type: "single",
-    question: "Was beschreibt die N-Kategorie?",
-    options: [
-      "Die Zahl der befallenen Organe",
-      "Das Fehlen oder Vorhandensein und die Ausdehnung regionärer Lymphknotenmetastasen",
-      "Die Fernmetastasierung",
-      "Die Nekroserate des Tumors",
-    ],
-    correct: [1],
-    explanation: "Die N-Kategorie beschreibt Fehlen (N0), Vorhandensein und Ausdehnung von Metastasen in den regionären Lymphknoten. NX = regionäre Lymphknoten nicht beurteilbar.",
-  },
-
-  // ===================== ICD-O-3 =====================
-  {
-    id: "ico-001", topic: "icdo", difficulty: 1, type: "multi",
-    question: "Aus welchen zwei Hauptachsen setzt sich die Verschlüsselung nach ICD-O-3 zusammen?",
-    options: [
-      "Topografie (Lokalisation)",
-      "Morphologie (Histologie und Verhalten)",
-      "Therapieart",
-      "Patientenalter",
-    ],
-    correct: [0, 1],
-    explanation: "Die ICD-O-3 verschlüsselt zweiachsig: Topografie (Lokalisation, C-Code) und Morphologie (Histologie + Verhalten/Dignität + Differenzierungsgrad). Therapie und Alter sind keine ICD-O-Achsen.",
-  },
-  {
-    id: "ico-002", topic: "icdo", difficulty: 2, type: "single",
-    question: "Wie ist ein vollständiger ICD-O-3-Morphologiecode aufgebaut (Beispiel 8140/3)?",
-    options: [
-      "Vier Ziffern Histologie, danach nach dem Schrägstrich eine Ziffer für das Verhalten (Dignität)",
-      "Drei Ziffern Lokalisation, danach eine Ziffer Grading",
-      "Eine Ziffer Verhalten, danach vier Ziffern Lokalisation",
-      "Fünf Ziffern für die Therapie",
-    ],
-    correct: [0],
-    explanation: "Der Morphologiecode besteht aus vier Ziffern für die Histologie (z. B. 8140 = Adenokarzinom o. n. A.) und nach dem Schrägstrich einer Ziffer für das biologische Verhalten (/3 = maligne, primär).",
-  },
-  {
-    id: "ico-003", topic: "icdo", difficulty: 2, type: "single",
-    question: "Was bedeutet die Verhaltenskodierung „/3“ im ICD-O-3-Morphologiecode?",
-    options: [
-      "Gutartig (benigne)",
-      "In situ (nicht invasiv)",
-      "Bösartig (maligne), Primärtumor",
-      "Unsicheres oder unbekanntes Verhalten",
-    ],
-    correct: [2],
-    explanation: "/3 = bösartig (maligne), Primärlokalisation. /0 = benigne, /1 = unsicher/grenzwertig, /2 = In situ, /6 = maligne Metastase, /9 = maligne, unklar ob primär oder metastatisch.",
-  },
-  {
-    id: "ico-004", topic: "icdo", difficulty: 3, type: "single",
-    question: "Welche Verhaltenskodierung nach ICD-O-3 steht für ein Carcinoma in situ?",
-    options: ["/0", "/1", "/2", "/3"],
-    correct: [2],
-    explanation: "/2 kennzeichnet In-situ-Neubildungen (nicht-invasiv, intraepithelial, nicht-infiltrierend). Invasiv-maligne Primärtumoren erhalten /3.",
-  },
-  {
-    id: "ico-005", topic: "icdo", difficulty: 3, type: "multi",
-    question: "Ordnen Sie zu: Welche Verhaltenscodes (/…) nach ICD-O-3 sind korrekt beschrieben?",
-    options: [
-      "/0 = gutartig (benigne)",
-      "/1 = unsicheres, grenzwertiges oder unbekanntes Verhalten",
-      "/6 = maligne, Metastase (Sekundärlokalisation)",
-      "/3 = gutartig, in situ",
-    ],
-    correct: [0, 1, 2],
-    explanation: "/0 benigne, /1 unsicher/grenzwertig, /6 maligne Metastase. Falsch ist die letzte Zuordnung: /3 steht für maligne (Primärtumor), nicht für gutartig/in situ.",
-  },
-  {
-    id: "ico-006", topic: "icdo", difficulty: 2, type: "single",
-    question: "Womit beginnen die Topografie-Codes (Lokalisation) der ICD-O-3?",
-    options: [
-      "Mit dem Buchstaben „C“ (z. B. C50.9)",
-      "Mit dem Buchstaben „M“",
-      "Mit einer vierstelligen Zahl",
-      "Mit dem Buchstaben „D“",
-    ],
-    correct: [0],
-    explanation: "Die Topografieachse der ICD-O-3 nutzt C-Codes (analog zu den bösartigen Neubildungen C00–C80 der ICD-10), z. B. C50.9 = Mamma o. n. A.",
-  },
-
-  // ===================== ICD-10 & DIGNITÄT =====================
-  {
-    id: "icd-001", topic: "icd10", difficulty: 1, type: "single",
-    question: "Welcher ICD-10-Kapitelbereich kodiert bösartige Neubildungen (Malignome)?",
-    options: ["A00–B99", "C00–C97", "D10–D36", "E00–E90"],
-    correct: [1],
-    explanation: "C00–C97 umfasst die bösartigen Neubildungen. D10–D36 sind gutartige Neubildungen; A00–B99 sind Infektionskrankheiten.",
-  },
-  {
-    id: "icd-002", topic: "icd10", difficulty: 2, type: "single",
-    question: "Welcher ICD-10-Bereich kodiert In-situ-Neubildungen?",
-    options: ["C00–C75", "D00–D09", "D10–D36", "D37–D48"],
-    correct: [1],
-    explanation: "D00–D09 = In-situ-Neubildungen. D10–D36 = gutartige Neubildungen, D37–D48 = Neubildungen unsicheren oder unbekannten Verhaltens.",
-  },
-  {
-    id: "icd-003", topic: "icd10", difficulty: 2, type: "single",
-    question: "Welcher ICD-10-Bereich kodiert Neubildungen unsicheren oder unbekannten Verhaltens?",
-    options: ["D00–D09", "D10–D36", "D37–D48", "C76–C80"],
-    correct: [2],
-    explanation: "D37–D48 = Neubildungen unsicheren oder unbekannten Verhaltens. Dies entspricht in etwa der Verhaltenskodierung /1 der ICD-O-3.",
-  },
-  {
-    id: "icd-004", topic: "icd10", difficulty: 2, type: "single",
-    question: "Wofür stehen die Kodes C76–C80 der ICD-10?",
-    options: [
-      "Gutartige Neubildungen des Verdauungstrakts",
-      "Bösartige Neubildungen ungenau bezeichneter, sekundärer und nicht näher bezeichneter Lokalisationen",
-      "In-situ-Neubildungen der Haut",
-      "Neubildungen des lymphatischen Gewebes",
-    ],
-    correct: [1],
-    explanation: "C76–C80 umfassen bösartige Neubildungen ungenau bezeichneter, sekundärer (Metastasen) und nicht näher bezeichneter Lokalisationen, z. B. C80.9 = bösartige Neubildung ohne Angabe der Lokalisation (CUP).",
-  },
-  {
-    id: "icd-005", topic: "icd10", difficulty: 3, type: "multi",
-    question: "Welche Zuordnungen von ICD-10-Bereich zu Dignität sind korrekt?",
-    options: [
-      "C00–C97 → bösartig",
-      "D00–D09 → in situ",
-      "D10–D36 → gutartig",
-      "D37–D48 → bösartig, metastasiert",
-    ],
-    correct: [0, 1, 2],
-    explanation: "C = bösartig, D00–D09 = in situ, D10–D36 = gutartig, D37–D48 = unsicheres/unbekanntes Verhalten (nicht „bösartig metastasiert“ – Metastasen werden mit C77–C79 kodiert).",
-  },
-
-  // ===================== GRADING / RESIDUAL / ZUSATZ =====================
-  {
-    id: "gd-001", topic: "grading", difficulty: 1, type: "single",
-    question: "Was beschreibt das Grading (G) eines Tumors?",
-    options: [
-      "Die anatomische Ausdehnung des Tumors",
-      "Den Differenzierungsgrad des Tumorgewebes (Ähnlichkeit zum Ursprungsgewebe)",
-      "Die Anzahl der Fernmetastasen",
-      "Den Rest-Tumor nach Operation",
-    ],
-    correct: [1],
-    explanation: "Das Grading beschreibt den histologischen Differenzierungsgrad. G1 = gut differenziert (tumorgewebe ähnelt Ursprungsgewebe), G3/G4 = schlecht/undifferenziert. Ausdehnung = TNM, Rest-Tumor = R-Klassifikation.",
-  },
-  {
-    id: "gd-002", topic: "grading", difficulty: 2, type: "single",
-    question: "Was bedeutet „G1“?",
-    options: [
-      "Undifferenziert (bösartigstes Erscheinungsbild)",
-      "Gut differenziert",
-      "Grading nicht bestimmbar",
-      "Mäßig differenziert",
-    ],
-    correct: [1],
-    explanation: "G1 = gut differenziert. G2 = mäßig, G3 = schlecht, G4 = undifferenziert, GX = Differenzierungsgrad nicht bestimmbar. Höheres G = größere Entdifferenzierung.",
-  },
-  {
-    id: "gd-003", topic: "grading", difficulty: 2, type: "single",
-    question: "Was bedeutet die Residualklassifikation „R0“?",
-    options: [
-      "Mikroskopischer Residualtumor",
-      "Makroskopischer Residualtumor",
-      "Kein Residualtumor (Tumor vollständig entfernt)",
-      "Vorhandensein von Rezidiven",
-    ],
-    correct: [2],
-    explanation: "R0 = kein Residualtumor (Resektionsränder tumorfrei). R1 = mikroskopischer Residualtumor, R2 = makroskopischer Residualtumor, RX = Vorhandensein nicht beurteilbar.",
-  },
-  {
-    id: "gd-004", topic: "grading", difficulty: 2, type: "single",
-    question: "Was bedeutet „R1“ in der Residualklassifikation?",
-    options: [
-      "Kein Residualtumor",
-      "Mikroskopisch nachweisbarer Residualtumor",
-      "Makroskopisch sichtbarer Residualtumor",
-      "Rezidiv nach einem Jahr",
-    ],
-    correct: [1],
-    explanation: "R1 = mikroskopischer Residualtumor (im Schnittrand histologisch Tumorzellen nachweisbar). R2 = makroskopisch verbliebener Tumor.",
-  },
-  {
-    id: "gd-005", topic: "grading", difficulty: 3, type: "multi",
-    question: "Welche Zusatzkodierungen zur TNM beschreiben eine Gefäß- bzw. Nerveninvasion?",
-    options: [
-      "L – Lymphgefäßinvasion (L0/L1)",
-      "V – Veneninvasion (V0/V1/V2)",
-      "Pn – perineurale Invasion (Pn0/Pn1)",
-      "G – Gefäßinvasion (G0/G1)",
-    ],
-    correct: [0, 1, 2],
-    explanation: "L = Lymphgefäßinvasion, V = Venen-(Blutgefäß-)invasion, Pn = perineurale Invasion. „G“ steht dagegen für das Grading (Differenzierungsgrad), nicht für Gefäßinvasion.",
-  },
-  {
-    id: "gd-006", topic: "grading", difficulty: 3, type: "single",
-    question: "Was beschreibt der C-Faktor (Certainty-Faktor) in der TNM-Klassifikation?",
-    options: [
-      "Die Zuverlässigkeit/Sicherheit der Klassifikation entsprechend den verwendeten diagnostischen Methoden",
-      "Den Karzinom-Subtyp",
-      "Die Zahl der befallenen Lymphknoten",
-      "Die chemotherapeutische Ansprechrate",
-    ],
-    correct: [0],
-    explanation: "Der C-Faktor (C1–C5) drückt aus, mit welcher diagnostischen Sicherheit die Klassifikation erfolgte – z. B. C1 = klinische Untersuchung, C4 = Operation/Pathologie, C5 = Autopsie.",
-  },
-
-  // ===================== KREBSREGISTER & MELDEWESEN =====================
-  {
-    id: "reg-001", topic: "register", difficulty: 2, type: "single",
-    question: "Welcher Datensatz bildet die bundesweit einheitliche Grundlage der klinischen Krebsregistrierung?",
-    options: [
-      "Der DRG-Datensatz",
-      "Der ADT/GEKID-Basisdatensatz (Onkologischer Basisdatensatz)",
-      "Der ICD-10-GM-Datensatz",
-      "Der OPS-Datensatz",
-    ],
-    correct: [1],
-    explanation: "Der ADT/GEKID-Basisdatensatz ist der bundesweit einheitliche onkologische Basisdatensatz für die klinische Krebsregistrierung. Er definiert die zu meldenden Merkmale.",
-  },
-  {
-    id: "reg-002", topic: "register", difficulty: 2, type: "single",
-    question: "Wofür steht die Abkürzung „GEKID“?",
-    options: [
-      "Gesellschaft der epidemiologischen Krebsregister in Deutschland",
-      "Gesamtverband der klinischen Datenverarbeitung",
-      "Gemeinsame Erfassung klinischer Informationen und Diagnosen",
-      "Gesellschaft für kurative Krebstherapie in Deutschland",
-    ],
-    correct: [0],
-    explanation: "GEKID = Gesellschaft der epidemiologischen Krebsregister in Deutschland e. V. Zusammen mit der ADT verantwortet sie den ADT/GEKID-Basisdatensatz.",
-  },
-  {
-    id: "reg-003", topic: "register", difficulty: 3, type: "single",
-    question: "Welcher Paragraf des SGB V regelt die Förderung und Aufgaben der klinischen Krebsregister?",
-    options: ["§ 63 SGB V", "§ 65c SGB V", "§ 137 SGB V", "§ 300 SGB V"],
-    correct: [1],
-    explanation: "§ 65c SGB V regelt die klinischen Krebsregister (eingeführt mit dem Krebsfrüherkennungs- und -registergesetz, KFRG, 2013), einschließlich Aufgaben und Finanzierung.",
-  },
-  {
-    id: "reg-004", topic: "register", difficulty: 2, type: "multi",
-    question: "Welche Ereignisse sind typische Meldeanlässe an das klinische Krebsregister?",
-    options: [
-      "Diagnosestellung einer Krebserkrankung",
-      "Beginn und Abschluss einer tumorspezifischen Therapie (OP, Strahlen-, systemische Therapie)",
-      "Verlauf/Nachsorge inkl. Statusänderung (z. B. Rezidiv, Progression)",
-      "Tod des Patienten",
-    ],
-    correct: [0, 1, 2, 3],
-    explanation: "Meldeanlässe sind u. a.: Diagnose, Therapiebeginn/-ende (operativ, strahlentherapeutisch, systemisch), Verlauf/Statusänderung und Tod. Sie bilden den onkologischen Krankheitsverlauf lückenlos ab.",
-  },
-  {
-    id: "reg-005", topic: "register", difficulty: 3, type: "single",
-    question: "Welche Institution führt auf Bundesebene die epidemiologischen Krebsregisterdaten zusammen (Zentrum für Krebsregisterdaten, ZfKD)?",
-    options: [
-      "Das Robert Koch-Institut (RKI)",
-      "Das Paul-Ehrlich-Institut",
-      "Der Gemeinsame Bundesausschuss (G-BA)",
-      "Das Bundesinstitut für Arzneimittel und Medizinprodukte (BfArM)",
-    ],
-    correct: [0],
-    explanation: "Das Zentrum für Krebsregisterdaten (ZfKD) ist am Robert Koch-Institut (RKI) angesiedelt und führt die Daten der epidemiologischen Landeskrebsregister zusammen.",
-  },
-  {
-    id: "reg-006", topic: "register", difficulty: 2, type: "single",
-    question: "Was ist das vorrangige Ziel der klinischen Krebsregistrierung?",
-    options: [
-      "Die Abrechnung von Krankenhausleistungen",
-      "Die flächendeckende Erfassung des Behandlungsgeschehens zur Qualitätssicherung und Verbesserung der onkologischen Versorgung",
-      "Die Erstellung von Arztbriefen",
-      "Die Verwaltung von Medikamentenbeständen",
-    ],
-    correct: [1],
-    explanation: "Klinische Krebsregister erfassen Diagnose, Therapie und Verlauf flächendeckend, um die Versorgungsqualität zu messen, zu vergleichen und zu verbessern (Qualitätssicherung).",
-  },
-
-  // ===================== EPIDEMIOLOGIE & STATISTIK =====================
-  {
-    id: "epi-001", topic: "epidemiologie", difficulty: 2, type: "single",
-    question: "Was bezeichnet die „Inzidenz“?",
-    options: [
-      "Die Zahl der zu einem Zeitpunkt bestehenden Erkrankungsfälle",
-      "Die Zahl der NEU aufgetretenen Erkrankungsfälle in einem definierten Zeitraum",
-      "Den Anteil der an einer Krankheit Verstorbenen",
-      "Die durchschnittliche Erkrankungsdauer",
-    ],
-    correct: [1],
-    explanation: "Inzidenz = Anzahl der Neuerkrankungen in einer Population in einem bestimmten Zeitraum (z. B. pro Jahr). Sie beschreibt das Neuauftreten – im Gegensatz zur Prävalenz (Bestand).",
-  },
-  {
-    id: "epi-002", topic: "epidemiologie", difficulty: 2, type: "single",
-    question: "Was bezeichnet die „Prävalenz“?",
-    options: [
-      "Die Zahl der Neuerkrankungen pro Jahr",
-      "Die Zahl bzw. der Anteil der zu einem bestimmten Zeitpunkt Erkrankten (Bestand)",
-      "Die Sterberate der Gesamtbevölkerung",
-      "Die Heilungsrate nach Therapie",
-    ],
-    correct: [1],
-    explanation: "Prävalenz = Anzahl/Anteil der zu einem Zeitpunkt (oder in einem Zeitraum) an einer Krankheit Erkrankten (Bestand). Neuerkrankungen = Inzidenz.",
-  },
-  {
-    id: "epi-003", topic: "epidemiologie", difficulty: 3, type: "single",
-    question: "Worin unterscheiden sich Mortalität und Letalität?",
-    options: [
-      "Sie sind identisch.",
-      "Mortalität bezieht die Todesfälle auf die Gesamtbevölkerung; Letalität bezieht die Todesfälle auf die an der Krankheit Erkrankten.",
-      "Mortalität misst Heilungen, Letalität misst Neuerkrankungen.",
-      "Letalität bezieht sich auf die Gesamtbevölkerung, Mortalität auf die Erkrankten.",
-    ],
-    correct: [1],
-    explanation: "Mortalität = Sterbefälle (an einer Krankheit) bezogen auf die Gesamtbevölkerung. Letalität = Anteil der an der Krankheit Verstorbenen bezogen auf die Zahl der Erkrankten (Maß der „Tödlichkeit“).",
-  },
-  {
-    id: "epi-004", topic: "epidemiologie", difficulty: 3, type: "single",
-    question: "Was beschreibt das „relative Überleben“ in der Krebsepidemiologie?",
-    options: [
-      "Den Anteil der Patienten, die geheilt wurden",
-      "Das Verhältnis des beobachteten Überlebens der Erkrankten zum erwarteten Überleben einer vergleichbaren Allgemeinbevölkerung",
-      "Die absolute Zahl überlebender Patienten",
-      "Das Überleben ausschließlich ohne Rezidiv",
-    ],
-    correct: [1],
-    explanation: "Das relative Überleben setzt das beobachtete Überleben der Erkrankten ins Verhältnis zum erwarteten Überleben einer nach Alter/Geschlecht vergleichbaren Allgemeinbevölkerung. So wird das krebsspezifische Überleben näherungsweise ohne Kenntnis der Todesursache geschätzt.",
-  },
-  {
-    id: "epi-005", topic: "epidemiologie", difficulty: 3, type: "single",
-    question: "Warum werden Krebsraten häufig „altersstandardisiert“ angegeben?",
-    options: [
-      "Um die Raten größer erscheinen zu lassen",
-      "Um Populationen mit unterschiedlicher Altersstruktur vergleichbar zu machen",
-      "Weil das Alter der Patienten unbekannt ist",
-      "Um nur junge Patienten zu erfassen",
-    ],
-    correct: [1],
-    explanation: "Da Krebs stark altersabhängig ist, verzerren unterschiedliche Altersstrukturen den Vergleich roher Raten. Die Altersstandardisierung (z. B. auf eine Standardbevölkerung) macht Regionen/Zeiträume vergleichbar.",
-  },
-  {
-    id: "epi-006", topic: "epidemiologie", difficulty: 1, type: "single",
-    question: "Ein Register erfasst in einer Region mit 200.000 Einwohnern in einem Jahr 100 Neuerkrankungen. Wie hoch ist die rohe Inzidenzrate pro 100.000 Einwohner?",
-    options: ["25 pro 100.000", "50 pro 100.000", "100 pro 100.000", "200 pro 100.000"],
-    correct: [1],
-    explanation: "Rate = (Neuerkrankungen / Bevölkerung) × 100.000 = (100 / 200.000) × 100.000 = 50 pro 100.000 Einwohner und Jahr.",
-  },
-
-  // ===================== METASTASIERUNG (Grundlagen/therapie-nah) =====================
-  {
-    id: "met-001", topic: "grundlagen", difficulty: 2, type: "multi",
-    question: "Welche Ausbreitungswege der Metastasierung gibt es?",
-    options: [
-      "Lymphogen (über die Lymphbahnen)",
-      "Hämatogen (über die Blutbahn)",
-      "Kavitär / per continuitatem (über Körperhöhlen bzw. flächenhaft in Nachbarschaft)",
-      "Neuronal-elektrisch (über Nervenimpulse)",
-    ],
-    correct: [0, 1, 2],
-    explanation: "Tumoren metastasieren lymphogen, hämatogen und kavitär (Abtropf-/Abklatschmetastasen in Körperhöhlen) bzw. per continuitatem. Eine „neuronal-elektrische“ Metastasierung existiert nicht (Nerveninvasion = perineurale Ausbreitung, Pn).",
-  },
-  {
-    id: "met-002", topic: "grundlagen", difficulty: 3, type: "single",
-    question: "Wie wird eine Lymphknotenmetastase des Primärtumors in der Regel kodiert bzw. eingeordnet?",
-    options: [
-      "Als eigener Primärtumor mit /3",
-      "Über die N-Kategorie (regionär) bzw. bei nicht-regionären Lymphknoten als Fernmetastase (M1)",
-      "Immer als M1 unabhängig von der Lokalisation",
-      "Sie wird nicht dokumentiert",
-    ],
-    correct: [1],
-    explanation: "Metastasen in regionären Lymphknoten werden über die N-Kategorie erfasst. Befall nicht-regionärer (entfernter) Lymphknoten gilt als Fernmetastase (M1). Die Topografie einer Metastase erhält in ICD-O das Verhalten /6.",
-  },
-
-  // ===================== THERAPIE & VERLAUF =====================
-  {
-    id: "the-001", topic: "therapie", difficulty: 2, type: "single",
-    question: "Was bedeutet „adjuvante“ Therapie?",
-    options: [
-      "Eine Therapie VOR der operativen Entfernung des Tumors",
-      "Eine unterstützende Therapie NACH der Primärbehandlung (z. B. nach OP), um das Rückfallrisiko zu senken",
-      "Eine rein schmerzlindernde Behandlung",
-      "Eine Therapie ausschließlich bei Metastasen",
-    ],
-    correct: [1],
-    explanation: "Adjuvant = ergänzend nach der Primärtherapie (meist nach OP), um verbliebene Tumorzellen zu bekämpfen und Rezidive zu verhindern. Neoadjuvant = vor der OP.",
-  },
-  {
-    id: "the-002", topic: "therapie", difficulty: 2, type: "single",
-    question: "Was bedeutet „neoadjuvante“ Therapie?",
-    options: [
-      "Therapie nach der Operation",
-      "Therapie vor der geplanten Operation (z. B. zur Tumorverkleinerung)",
-      "Nachsorgeuntersuchung",
-      "Alternative Bezeichnung für Palliativtherapie",
-    ],
-    correct: [1],
-    explanation: "Neoadjuvant = vor der eigentlichen (operativen) Primärtherapie, z. B. um den Tumor zu verkleinern (Downstaging) und operabel zu machen. Die anschließende Klassifikation trägt das Präfix „y“.",
-  },
-  {
-    id: "the-003", topic: "therapie", difficulty: 1, type: "single",
-    question: "Worin unterscheiden sich kurative und palliative Therapieintention?",
-    options: [
-      "Kurativ zielt auf Heilung; palliativ zielt auf Linderung/Lebensqualität ohne Heilungsanspruch.",
-      "Kurativ und palliativ bedeuten dasselbe.",
-      "Kurativ ist immer eine Operation, palliativ immer eine Chemotherapie.",
-      "Palliativ zielt auf Heilung, kurativ auf Linderung.",
-    ],
-    correct: [0],
-    explanation: "Kurative Therapie verfolgt das Ziel der Heilung. Palliative Therapie zielt – bei nicht heilbarer Erkrankung – auf Symptomlinderung, Lebensverlängerung und Erhalt der Lebensqualität.",
-  },
-  {
-    id: "the-004", topic: "therapie", difficulty: 2, type: "multi",
-    question: "Welche der folgenden zählen zu den systemischen (im ganzen Körper wirkenden) Tumortherapien?",
-    options: [
-      "Chemotherapie",
-      "Strahlentherapie",
-      "Hormon-(endokrine) Therapie",
-      "Zielgerichtete Therapie / Immuntherapie",
-    ],
+    id: "geo-002", topic: "geografie", difficulty: 2, type: "multi",
+    question: "Welche Länder grenzen an Deutschland?",
+    options: ["Österreich", "Ungarn", "Dänemark", "Luxemburg", "Italien"],
     correct: [0, 2, 3],
-    explanation: "Systemische Therapien wirken im ganzen Körper: Chemotherapie, endokrine (Hormon-)Therapie sowie zielgerichtete Therapie/Immuntherapie. Die Strahlentherapie ist dagegen – wie die Operation – ein lokales bzw. lokoregionäres Verfahren und zählt NICHT zu den systemischen Therapien. (Alle Verfahren werden im Register als Therapiemeldung erfasst.)",
+    explanation: "Deutschland hat neun Nachbarländer: Dänemark, Polen, Tschechien, Österreich, Schweiz, Frankreich, Luxemburg, Belgien und die Niederlande.",
   },
   {
-    id: "the-005", topic: "therapie", difficulty: 2, type: "single",
-    question: "Was versteht man unter einem „Rezidiv“?",
-    options: [
-      "Das erstmalige Auftreten eines Tumors",
-      "Das erneute Auftreten der Tumorerkrankung nach einem krankheitsfreien Intervall",
-      "Eine gutartige Neubildung",
-      "Eine Nebenwirkung der Chemotherapie",
-    ],
-    correct: [1],
-    explanation: "Ein Rezidiv ist das Wiederauftreten der Erkrankung nach zwischenzeitlicher Tumorfreiheit. Man unterscheidet z. B. Lokalrezidiv, regionäres Rezidiv und Fernmetastasen/Progress. In der TNM wird es mit dem Präfix „r“ gekennzeichnet.",
+    id: "geo-003", topic: "geografie", difficulty: 1, type: "code",
+    question: "Wie heißt der längste Fluss Deutschlands?",
+    answer: "Rhein", placeholder: "Antwort eintippen",
+    explanation: "Der Rhein ist mit rund 865 km auf deutschem Gebiet der längste Fluss Deutschlands (Gesamtlänge ca. 1.230 km).",
   },
   {
-    id: "the-006", topic: "therapie", difficulty: 3, type: "single",
-    question: "Was beschreibt das „Staging“ – im Unterschied zum „Grading“?",
-    options: [
-      "Staging = Differenzierungsgrad; Grading = Ausbreitung",
-      "Staging = anatomische Ausbreitung (z. B. via TNM/Stadiengruppierung); Grading = Differenzierungsgrad des Gewebes",
-      "Beide beschreiben die Ausbreitung",
-      "Beide beschreiben die Differenzierung",
-    ],
+    id: "geo-004", topic: "geografie", difficulty: 2, type: "single",
+    question: "Welcher ist der höchste Berg Europas (außerhalb des Kaukasus)?",
+    options: ["Matterhorn", "Mont Blanc", "Zugspitze", "Großglockner"],
     correct: [1],
-    explanation: "Staging beschreibt die anatomische Ausbreitung der Erkrankung (TNM → UICC-Stadien I–IV). Grading beschreibt den feingeweblichen Differenzierungsgrad (G1–G4). Beide sind prognostisch wichtig, aber verschieden.",
+    explanation: "Der Mont Blanc ist mit ca. 4.806 m der höchste Berg der Alpen und Westeuropas.",
+  },
+  {
+    id: "geo-005", topic: "geografie", difficulty: 1, type: "code",
+    question: "Hauptstadt von Spanien?",
+    answer: "Madrid", placeholder: "Antwort eintippen",
+    explanation: "Madrid liegt im Zentrum der Iberischen Halbinsel und ist seit 1561 Hauptstadt.",
   },
 
-  // ===================== DATENSCHUTZ & RECHT =====================
+  // ===================== ENGLISCH =====================
   {
-    id: "ds-001", topic: "datenschutz", difficulty: 2, type: "multi",
-    question: "Welche Aussagen zum Datenschutz in der Krebsregistrierung sind zutreffend?",
-    options: [
-      "Gesundheitsdaten gehören zu den besonders schützenswerten Datenkategorien (Art. 9 DSGVO).",
-      "Für Meldung und Verarbeitung gelten enge gesetzliche Grundlagen (u. a. Landeskrebsregistergesetze, § 65c SGB V).",
-      "Krebsregisterdaten dürfen frei und ohne Einschränkung veröffentlicht werden.",
-      "Patientinnen und Patienten haben grundsätzlich Betroffenenrechte (z. B. Information, unter Umständen Widerspruch).",
-    ],
+    id: "en-001", topic: "englisch", difficulty: 1, type: "code",
+    question: "Englisch für „der Schmetterling“?",
+    answer: "butterfly", placeholder: "englisches Wort",
+    explanation: "butterfly = Schmetterling.",
+  },
+  {
+    id: "en-002", topic: "englisch", difficulty: 1, type: "single",
+    question: "Was bedeutet „reliable“?",
+    options: ["zuverlässig", "erleichtert", "verwandt", "wiederholbar"],
+    correct: [0],
+    explanation: "reliable = zuverlässig (von „to rely on“ = sich verlassen auf).",
+  },
+  {
+    id: "en-003", topic: "englisch", difficulty: 2, type: "single",
+    question: "Was bedeutet „to become“?",
+    options: ["bekommen", "werden", "bequem sein", "begleiten"],
+    correct: [1],
+    explanation: "Klassischer „falscher Freund“: to become = werden. „Bekommen“ heißt auf Englisch to get oder to receive.",
+  },
+  {
+    id: "en-004", topic: "englisch", difficulty: 2, type: "code",
+    question: "Englisch für „die Erfahrung“?",
+    answer: "experience", placeholder: "englisches Wort",
+    explanation: "experience = Erfahrung, Erlebnis. Achtung: „experiment“ ist das Experiment.",
+  },
+  {
+    id: "en-005", topic: "englisch", difficulty: 1, type: "multi",
+    question: "Welche Wörter bedeuten „groß“?",
+    options: ["big", "tall", "small", "large"],
     correct: [0, 1, 3],
-    explanation: "Gesundheitsdaten sind nach Art. 9 DSGVO besonders geschützt; die Registrierung stützt sich auf gesetzliche Grundlagen (Landeskrebsregistergesetze, § 65c SGB V). Betroffenenrechte bestehen. Eine freie, uneingeschränkte Veröffentlichung ist unzulässig.",
-  },
-  {
-    id: "ds-002", topic: "datenschutz", difficulty: 3, type: "single",
-    question: "Wozu dient die Pseudonymisierung im epidemiologischen Krebsregister?",
-    options: [
-      "Zur endgültigen, unwiederbringlichen Löschung aller Personendaten",
-      "Zur Trennung der Identitätsdaten von den medizinischen Daten, sodass ein direkter Personenbezug nur über einen gesicherten Schlüssel möglich ist",
-      "Zur schnelleren Abrechnung",
-      "Zur Veröffentlichung von Klarnamen in Statistiken",
-    ],
-    correct: [1],
-    explanation: "Pseudonymisierung trennt Identitäts- von medizinischen Daten; ein Rückbezug ist nur über einen streng geschützten Schlüssel (z. B. Vertrauensstelle) möglich. Das ermöglicht Auswertungen bei gleichzeitigem Schutz der Betroffenen. Anonymisierung wäre unwiederbringlich – hier aber ist die Zusammenführung von Meldungen nötig.",
+    explanation: "big und large = groß (Umfang), tall = groß gewachsen (Höhe). small = klein.",
   },
 
-  // ===================== RECHEN-/ANWENDUNGSAUFGABEN (numeric) =====================
+  // ===================== MATHE =====================
   {
-    id: "reg-007", topic: "register", difficulty: 2, type: "numeric",
-    question: "Erstdiagnose war am 15.03.2020, das Sterbedatum am 15.09.2022. Wie viele volle Monate beträgt die Überlebenszeit?",
-    answer: 30, tolerance: 0, unit: "Monate",
-    explanation: "Von 03/2020 bis 03/2022 sind es 24 Monate, plus weitere 6 Monate bis 09/2022 = 30 Monate. Da beide Daten auf den 15. fallen, ist der letzte Monat voll. Die Überlebenszeit (Zeit von Diagnose bis Tod/letztem Kontakt) ist eine zentrale Kenngröße der Verlaufsdokumentation.",
+    id: "ma-001", topic: "mathe", difficulty: 1, type: "numeric",
+    question: "Wie viel ist 15 % von 80?",
+    answer: 12,
+    explanation: "80 × 0,15 = 12. Trick: 10 % = 8, 5 % = 4 → zusammen 12.",
   },
   {
-    id: "reg-008", topic: "register", difficulty: 2, type: "numeric",
-    question: "Eine Patientin ist am 12.06.1958 geboren. Die Erstdiagnose wurde am 12.03.2021 gestellt. Wie alt (in vollen Jahren) war sie bei Diagnose?",
-    answer: 62, tolerance: 0, unit: "Jahre",
-    explanation: "Im März 2021 hatte die Patientin ihren Geburtstag im Juni 2021 noch nicht erreicht. Ihr letzter Geburtstag war der 12.06.2020 (62. Geburtstag). Das Erkrankungsalter wird in vollen Jahren zum Diagnosedatum dokumentiert – hier 62 Jahre.",
+    id: "ma-002", topic: "mathe", difficulty: 2, type: "numeric",
+    question: "Ein Kreis hat den Radius 3 cm. Wie groß ist seine Fläche (auf eine Nachkommastelle)?",
+    answer: 28.3, tolerance: 0.1, unit: "cm²",
+    explanation: "A = π × r² = 3,14159 × 9 ≈ 28,3 cm².",
   },
   {
-    id: "epi-007", topic: "epidemiologie", difficulty: 2, type: "numeric",
-    question: "In einer Region mit 200.000 Einwohnern werden in einem Jahr 50 Neuerkrankungen registriert. Wie hoch ist die rohe Inzidenzrate (pro 100.000 Einwohner)?",
-    answer: 25, tolerance: 0, unit: "pro 100.000",
-    explanation: "Rohe Inzidenzrate = (Neuerkrankungen ÷ Bevölkerung) × 100.000 = (50 ÷ 200.000) × 100.000 = 25 pro 100.000 Einwohner und Jahr. „Roh“ bedeutet ohne Altersstandardisierung – für Vergleiche zwischen Regionen wird meist zusätzlich altersstandardisiert.",
+    id: "ma-003", topic: "mathe", difficulty: 1, type: "single",
+    question: "Was ist 7 × 8?",
+    options: ["54", "56", "58", "64"],
+    correct: [1],
+    explanation: "7 × 8 = 56. Eselsbrücke: 5, 6, 7, 8 → 56 = 7 × 8.",
   },
   {
-    id: "tnm-012", topic: "tnm", difficulty: 1, type: "numeric",
-    question: "Bei einer Operation wurden 18 regionäre Lymphknoten entfernt und untersucht, 3 davon waren tumorbefallen. Wie viele der untersuchten Lymphknoten waren tumorfrei?",
-    answer: 15, tolerance: 0, unit: "Lymphknoten",
-    explanation: "18 untersuchte − 3 befallene = 15 tumorfreie Lymphknoten. Dokumentiert werden sowohl die Zahl der untersuchten als auch der befallenen Lymphknoten (z. B. als „3/18“). Diese Angabe fließt in die pN-Kategorie ein.",
+    id: "ma-004", topic: "mathe", difficulty: 2, type: "multi",
+    question: "Welche Zahlen sind Primzahlen?",
+    options: ["2", "9", "17", "21", "23"],
+    correct: [0, 2, 4],
+    explanation: "Primzahlen sind nur durch 1 und sich selbst teilbar: 2, 17, 23. 9 = 3 × 3, 21 = 3 × 7.",
   },
-  // --- Kodier-Aufgaben (Aufgabentyp „Code eingeben" der ADT-Prüfung) ---------
-  // Der Prüfungsteil, der in der echten Prüfung mit den PDF-Verzeichnissen bearbeitet
-  // wird: Fall lesen, nachschlagen, Kode eintragen. Bewusst ohne Auswahlmöglichkeiten –
-  // das Erkennen des richtigen Kodes unter vier Vorschlägen ist eine andere Aufgabe.
+
+  // ===================== ALLGEMEINWISSEN =====================
   {
-    id: "cod-001", topic: "icd10", difficulty: 2, type: "code",
-    question: "Invasives Karzinom im oberen äußeren Quadranten der linken Brust. Welcher ICD-10-GM-Kode beschreibt die Lokalisation?",
-    answer: "C50.4", placeholder: "z. B. C50.4",
-    explanation: "C50.- ist die Brustdrüse, die vierte Stelle bezeichnet den Quadranten: .4 = oberer äußerer Quadrant. Die Seite (links/rechts) steckt NICHT im ICD-10-Kode – sie wird als eigenes Merkmal dokumentiert.",
-  },
-  {
-    id: "cod-002", topic: "icdo", difficulty: 2, type: "code",
-    question: "Adenokarzinom des Colon sigmoideum, invasiv. Welcher ICD-O-3-Morphologiekode inklusive Dignität ist einzutragen?",
-    answer: "8140/3", placeholder: "z. B. 8140/3",
-    explanation: "8140 = Adenokarzinom o. n. A., die Ziffer hinter dem Schrägstrich ist die Dignität: /3 = maligne, primär. Ohne Dignitätsziffer ist ein Morphologiekode unvollständig.",
+    id: "aw-001", topic: "wissen", difficulty: 1, type: "single",
+    question: "Welches chemische Symbol hat Gold?",
+    options: ["Go", "Gd", "Au", "Ag"],
+    correct: [2],
+    explanation: "Au kommt vom lateinischen „aurum“. Ag (argentum) ist Silber.",
   },
   {
-    id: "cod-003", topic: "icdo", difficulty: 2, type: "code",
-    question: "Derselbe Fall: Welcher ICD-O-3-Topografiekode gehört zum Colon sigmoideum?",
-    answer: "C18.7", placeholder: "z. B. C18.7",
-    explanation: "C18.- ist das Kolon, .7 das Sigma. Topografie und Morphologie werden in der ICD-O-3 immer getrennt kodiert – der Fall braucht beide Angaben.",
+    id: "aw-002", topic: "wissen", difficulty: 1, type: "numeric",
+    question: "In welchem Jahr fiel die Berliner Mauer?",
+    answer: 1989,
+    explanation: "Die Mauer fiel am 9. November 1989; die Wiedervereinigung folgte am 3. Oktober 1990.",
   },
   {
-    id: "cod-004", topic: "icdo", difficulty: 3, type: "code",
-    question: "Duktales Carcinoma in situ (DCIS) der Mamma. Welcher ICD-O-3-Morphologiekode inklusive Dignität?",
-    answer: "8500/2", placeholder: "z. B. 8500/2",
-    explanation: "8500 = duktales Karzinom, /2 = In-situ-Karzinom (nicht invasiv). Der häufigste Fehler ist /3 – das wäre das invasive duktale Karzinom.",
+    id: "aw-003", topic: "wissen", difficulty: 2, type: "multi",
+    question: "Welche Planeten sind Gasriesen?",
+    options: ["Jupiter", "Mars", "Saturn", "Venus"],
+    correct: [0, 2],
+    explanation: "Jupiter und Saturn sind Gasriesen (Uranus und Neptun gelten als Eisriesen). Mars und Venus sind Gesteinsplaneten.",
   },
   {
-    id: "cod-005", topic: "icd10", difficulty: 3, type: "code",
-    question: "Bei Erstdiagnose sind bereits Lebermetastasen nachgewiesen. Welcher ICD-10-GM-Kode wird für die sekundäre bösartige Neubildung der Leber vergeben?",
-    answer: "C78.7", placeholder: "z. B. C78.7",
-    explanation: "C78.7 = sekundäre bösartige Neubildung der Leber und der intrahepatischen Gallengänge. Metastasen werden mit eigenen C78-/C79-Kodes erfasst; der Primärtumor behält seinen eigenen Kode.",
+    id: "aw-004", topic: "wissen", difficulty: 1, type: "code",
+    question: "Wer malte die „Mona Lisa“? (Nachname reicht: da …)",
+    answer: "da Vinci", accept: ["Leonardo da Vinci", "Leonardo"], placeholder: "Antwort eintippen",
+    explanation: "Leonardo da Vinci malte die Mona Lisa Anfang des 16. Jahrhunderts; sie hängt im Louvre in Paris.",
   },
 ];
 
@@ -744,11 +214,11 @@ const SAMPLE_QUESTIONS = [
 // geschützten Fragen – die kommen erst nach Zugangscode aus Supabase und liegen dann
 // nur lokal im Cache dieses Geräts.
 if (typeof window !== "undefined") {
-  window.ADT_SAMPLE = { TOPICS: SAMPLE_TOPICS, QUESTIONS: SAMPLE_QUESTIONS };
-  var __active = window.ADT_SAMPLE;
+  window.SAMPLE_CONTENT = { TOPICS: SAMPLE_TOPICS, QUESTIONS: SAMPLE_QUESTIONS };
+  var __active = window.SAMPLE_CONTENT;
   try {
     var __ls = window.localStorage;
-    var __raw = __ls && __ls.getItem("adt_content_v1");
+    var __raw = __ls && __ls.getItem("lern_content_v1");
     if (__raw) {
       var __g = JSON.parse(__raw);
       if (__g && __g.TOPICS && Array.isArray(__g.QUESTIONS) && __g.QUESTIONS.length) __active = __g;

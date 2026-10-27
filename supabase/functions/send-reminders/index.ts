@@ -23,7 +23,7 @@ const supabase = createClient(
 );
 
 webpush.setVapidDetails(
-  Deno.env.get("VAPID_SUBJECT") ?? "mailto:reminders@adt-trainer.app",
+  Deno.env.get("VAPID_SUBJECT") ?? "mailto:reminders@lern-trainer.app",
   Deno.env.get("VAPID_PUBLIC")!,
   Deno.env.get("VAPID_PRIVATE")!,
 );
@@ -48,10 +48,10 @@ Deno.serve(async (req) => {
 
   const now = new Date();
   const payload = JSON.stringify({
-    title: "ADT Trainer",
+    title: "Lern-Trainer",
     body: "Zeit für ein paar Übungsfragen! 📚",
     url: "./index.html",
-    tag: "adt-reminder",
+    tag: "lern-reminder",
   });
 
   let sent = 0, removed = 0;

@@ -22,4 +22,4 @@ alter table public.feedback_issues enable row level security;
 
 -- Aufräumen (optional): Ein Eintrag verhindert dauerhaft ein zweites Issue zur
 -- selben Frage. Wurde ein Issue in GitHub gelöscht und soll neu angelegt werden:
---   delete from public.feedback_issues where question_id = 'tnm-012';
+--   delete from public.feedback_issues where question_id = 'geo-012';

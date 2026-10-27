@@ -1,4 +1,4 @@
-/* Service Worker – Offline-Cache für den ADT Trainer.
+/* Service Worker – Offline-Cache für den Lern-Trainer.
  *
  * Strategie (selbst-aktualisierend, KEIN manuelles Hochzählen je Release nötig):
  *  - App-Shell (HTML, CSS, JS, Icons, Manifest): stale-while-revalidate –
@@ -10,7 +10,7 @@
  *
  * Der Cache-Name ist stabil; NICHT je Release ändern. Nur bei strukturellen
  * Änderungen der Caching-Logik erhöhen (dann wird der alte Cache in „activate" geleert). */
-const CACHE = "adt-shell-v1";
+const CACHE = "lern-shell-v1";
 
 /* WARUM DIESE ZEILE: Der Browser meldet eine neue Fassung nur, wenn sich sw.js SELBST
  * ändert – dann feuert `updatefound` und die App zeigt ihr Update-Banner. Ändert sich
@@ -20,7 +20,7 @@ const CACHE = "adt-shell-v1";
  * es monatelang keinen automatischen Hinweis mehr.
  * Deshalb wird hier bei JEDEM Release die App-Version mitgeführt. Sie muss mit
  * APP_VERSION in js/app.js übereinstimmen – ein Test wacht darüber. */
-const SW_APP_VERSION = "0.45.0";
+const SW_APP_VERSION = "1.0.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -96,12 +96,12 @@ self.addEventListener("message", (e) => {
 self.addEventListener("push", (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) { data = { body: e.data ? e.data.text() : "" }; }
-  const title = data.title || "ADT Trainer";
+  const title = data.title || "Lern-Trainer";
   const options = {
     body: data.body || "Zeit für ein paar Übungsfragen! 📚",
     icon: "./icons/icon-192.png",
     badge: "./icons/icon-192.png",
-    tag: data.tag || "adt-reminder",
+    tag: data.tag || "lern-reminder",
     data: { url: data.url || "./index.html" },
     requireInteraction: false,
   };

@@ -11,7 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const store = {};
 let online = true;
 Object.defineProperty(globalThis, 'navigator', { value: { get onLine() { return online; } }, writable: true, configurable: true });
-globalThis.window = { crypto: webcrypto, ADT_CONFIG: {} };
+globalThis.window = { crypto: webcrypto, APP_CONFIG: {} };
 globalThis.localStorage = {
   getItem: (k) => (k in store ? store[k] : null),
   setItem: (k, v) => { store[k] = String(v); },
@@ -26,7 +26,7 @@ globalThis.fetch = async (url, opts) => {
 
 // eslint-disable-next-line no-eval
 eval(fs.readFileSync(path.join(root, 'js/sync.js'), 'utf8'));
-const S = globalThis.window.ADTSync;
+const S = globalThis.window.LernSync;
 
 let failures = 0;
 const ok = (c, m) => { if (!c) { console.log('FAIL: ' + m); failures++; } else console.log('ok:  ' + m); };
@@ -97,18 +97,18 @@ const mrNone = S.mergeStates({ perQuestion: {}, badges: {} }, { perQuestion: {},
 ok(mrNone.reports && Object.keys(mrNone.reports).length === 0, 'merge reports: fehlendes Feld ergibt leeres Objekt');
 
 // ---- Code-Erzeugung / Normalisierung ----
-ok(/^ADT-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}$/.test(S.generateCode()), 'generateCode Format');
-ok(S.normalizeCode('adt xxxxx yyyyy zzzzz') === 'ADT-XXXXX-YYYYY-ZZZZZ', 'normalizeCode');
+ok(/^LRN-[A-Z2-9]{5}-[A-Z2-9]{5}-[A-Z2-9]{5}$/.test(S.generateCode()), 'generateCode Format');
+ok(S.normalizeCode('lrn xxxxx yyyyy zzzzz') === 'LRN-XXXXX-YYYYY-ZZZZZ', 'normalizeCode');
 const codes = new Set(); for (let i = 0; i < 500; i++) codes.add(S.generateCode());
 ok(codes.size === 500, '500 Codes eindeutig');
 
 // ---- Header-Logik: neuer sb_-Key ohne Authorization, JWT mit ----
-globalThis.window.ADT_CONFIG = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'sb_publishable_TEST' };
-S.setCode('ADT-AAAAA-BBBBB-CCCCC');
+globalThis.window.APP_CONFIG = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'sb_publishable_TEST' };
+S.setCode('LRN-AAAAA-BBBBB-CCCCC');
 await S.overwriteRemote({ xp: 1, perQuestion: {}, badges: {} });
 ok(captured && captured.headers.apikey.startsWith('sb_publishable_'), 'sb-Key im apikey-Header');
 ok(captured && !('Authorization' in captured.headers), 'kein Authorization bei sb_-Key');
-globalThis.window.ADT_CONFIG = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'eyJhbGciOi.test.sig' };
+globalThis.window.APP_CONFIG = { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'eyJhbGciOi.test.sig' };
 await S.overwriteRemote({ xp: 1, perQuestion: {}, badges: {} });
 ok(captured.headers.Authorization === 'Bearer eyJhbGciOi.test.sig', 'JWT-Key mit Authorization');
 

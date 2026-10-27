@@ -35,7 +35,7 @@ for (const q of QUESTIONS || []) {
     if ('options' in q || 'correct' in q) fail(q.id + ': code darf keine options/correct haben');
     // Ein Kode, der sich nur durch Trennzeichen von der Musterlösung unterscheidet, ist
     // keine Alternative – die App wertet ihn ohnehin als richtig. Meist ein Autorenfehler.
-    const key = v => String(v).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const key = v => String(v).toLocaleUpperCase('de-DE').replace(/[^\p{L}\p{N}]/gu, '');
     for (const a of (q.accept || [])) if (key(a) === key(q.answer)) fail(q.id + ': accept "' + a + '" ist identisch zur answer (nur andere Trennzeichen)');
   } else {
     if (!Array.isArray(q.options) || q.options.length < 2) fail(q.id + ': <2 Optionen');
