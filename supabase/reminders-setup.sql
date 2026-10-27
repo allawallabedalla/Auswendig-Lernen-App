@@ -44,7 +44,7 @@ grant execute on function public.push_remove(text)                  to anon;
 --    Dashboard → Database → Extensions → pg_cron und pg_net aktivieren).
 --    URL an dein Projekt anpassen und DEIN_CRON_SECRET wie im Edge-Function-Secret setzen.
 --
--- select cron.schedule('adt-reminders-hourly', '0 * * * *', $CRON$
+-- select cron.schedule('lern-reminders-hourly', '0 * * * *', $CRON$
 --   select net.http_post(
 --     url     := 'https://DEINPROJEKT.supabase.co/functions/v1/send-reminders',
 --     headers := jsonb_build_object('Content-Type','application/json','x-cron-secret','DEIN_CRON_SECRET'),
@@ -52,4 +52,4 @@ grant execute on function public.push_remove(text)                  to anon;
 --   );
 -- $CRON$);
 --
--- Zum Entfernen: select cron.unschedule('adt-reminders-hourly');
+-- Zum Entfernen: select cron.unschedule('lern-reminders-hourly');

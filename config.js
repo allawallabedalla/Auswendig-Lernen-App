@@ -12,7 +12,7 @@
  * Solange die Felder leer sind, funktioniert die App ganz normal – nur
  * eben lokal ohne Cloud-Sync.
  */
-window.ADT_CONFIG = {
+window.APP_CONFIG = {
   supabaseUrl: "https://ayozhjbfhreqauyimsjy.supabase.co",
   // öffentlicher Schlüssel (neues Supabase-Format "sb_publishable_…" = Ersatz für den anon-Key)
   supabaseAnonKey: "sb_publishable_ey4LlOV5CftCc_YnGJpfjg__aXt__jB",
@@ -23,16 +23,15 @@ window.ADT_CONFIG = {
   vapidPublicKey: "BPKKeZOQjP2lCBpX-zDcUO1E5pvpTw9DkrIJn-apU2LYXYmRBqePd0wRdv-S-F50uHWZaFYgSE1WcvshMERzj20",
 
   // Zugangsschutz für die Lerninhalte.
-  //  false = öffentliche Beispiel-Fragen (aktueller Stand, kein Code nötig).
+  //  false = Beispiel-Fragen bzw. selbst importierte Inhalte (Standard, kein Code nötig).
   //  true  = Inhalte sind geschützt: die App verlangt einen Zugangscode und lädt die
   //          Fragen serverseitig geprüft aus Supabase (get_content). Erst umstellen,
   //          wenn das echte Material in Supabase liegt (siehe supabase/content-gate.sql).
-  contentGated: true,
+  contentGated: false,
 
   // Zielrepo für „Als Issue" bei gemeldeten Fragen ("owner/repo", leer = Knöpfe ausblenden).
   // Die App verschickt NICHTS selbst und kennt kein Token: Sie öffnet nur GitHubs
   // „neues Issue"-Formular mit vorbefülltem Titel/Text – abgeschickt wird es dort per Hand.
-  // WICHTIG: Das Repo muss PRIVAT sein. Der Issue-Text enthält den Fragetext, und die
-  // Lerninhalte sind zugangsgeschützt – in einem öffentlichen Repo wären sie sonst offen.
-  feedbackRepo: "allawallabedalla/Secret",
+  // Bei geschützten Inhalten ein PRIVATES Repo wählen – der Issue-Text enthält den Fragetext.
+  feedbackRepo: "",
 };

@@ -5,7 +5,7 @@
  * bereits als Markdown-Backlog mit Kästchen. Dieses Werkzeug führt so einen Export mit
  * `docs/fragen-backlog.md` zusammen, damit die Arbeitsliste im Repo mitwächst:
  *
- *   node tools/reports-to-backlog.mjs ~/Downloads/adt-trainer-gemeldete-fragen-2026-08-05.md
+ *   node tools/reports-to-backlog.mjs ~/Downloads/lern-trainer-gemeldete-fragen-2026-08-05.md
  *   node tools/reports-to-backlog.mjs <export.md> --out docs/fragen-backlog.md
  *
  * Regeln (bewusst einfach und verlustfrei):

@@ -1,7 +1,7 @@
 // Supabase Edge Function: create-issue
 // -----------------------------------------------------------------------------
 // Legt für eine in der App gemeldete Frage DIREKT ein GitHub-Issue an – ohne dass
-// die Nutzerin zu GitHub wechseln oder dort angemeldet sein muss.
+// man zu GitHub wechseln oder dort angemeldet sein muss.
 //
 // Warum überhaupt ein Serverteil? Ein GitHub-Token darf NIEMALS in eine öffentlich
 // ausgelieferte Web-App. Diese Funktion hält ihn als Secret; die App schickt nur die
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       "Authorization": "Bearer " + token,
       "Accept": "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "adt-trainer",
+      "User-Agent": "lern-trainer",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ title, body, labels: ["frage-feedback"] }),
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
           "Authorization": "Bearer " + token,
           "Accept": "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "adt-trainer",
+          "User-Agent": "lern-trainer",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ title, body }),

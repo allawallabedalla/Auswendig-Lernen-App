@@ -1,7 +1,7 @@
 {
-  "name": "ADT Trainer – Tumordokumentar/in",
-  "short_name": "ADT Trainer",
-  "description": "Übungs-App zur Vorbereitung auf die ADT-Prüfung Tumordokumentar/in mit Quiz, Prüfungssimulation und Gamification.",
+  "name": "Lern-Trainer – Auswendig lernen",
+  "short_name": "Lern-Trainer",
+  "description": "Lern-App zum Auswendiglernen beliebiger Inhalte mit Quiz, Spaced Repetition, Prüfungssimulation und Gamification.",
   "lang": "de",
   "start_url": "./index.html",
   "scope": "./",

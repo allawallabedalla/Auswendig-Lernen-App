@@ -1,4 +1,4 @@
-/* ADT Trainer – App-Logik (Vanilla JS, keine Abhängigkeiten, offline-fähig). */
+/* Lern-Trainer – App-Logik (Vanilla JS, keine Abhängigkeiten, offline-fähig). */
 "use strict";
 
 /* ------------------------------------------------------------------ *
@@ -17,7 +17,7 @@ function questionValid(q, ids) {
     if (typeof q.answer !== "number" || !isFinite(q.answer)) { console.error("Frage-Fehler (numeric ohne gültige answer):", q.id); return false; }
     if (q.tolerance != null && (typeof q.tolerance !== "number" || !isFinite(q.tolerance) || q.tolerance < 0)) { console.error("Frage-Fehler (numeric tolerance ungültig):", q.id); return false; }
   } else if (q.type === "code") {
-    // Kodier-Aufgabe: erwarteter Kode als Text (z. B. "C50.4", "8500/3") statt Optionen.
+    // Eingabe-Aufgabe: erwartete Antwort als Text (z. B. "Paris") statt Optionen.
     if (typeof q.answer !== "string" || !q.answer.trim()) { console.error("Frage-Fehler (code ohne answer):", q.id); return false; }
     if (q.accept != null && (!Array.isArray(q.accept) || q.accept.some(a => typeof a !== "string" || !a.trim()))) {
       console.error("Frage-Fehler (code accept ungültig):", q.id); return false;
@@ -51,7 +51,7 @@ let DATA_OK = checkData();
 /* ------------------------------------------------------------------ *
  * 1) Persistenter Zustand (localStorage, robust gegen Defekte)
  * ------------------------------------------------------------------ */
-const STORE_KEY = "adt_trainer_state_v1";   // NIE umbenennen – siehe workbook.md („Speicherstände sind heilig")
+const STORE_KEY = "lern_state_v1";   // NIE umbenennen – sonst ist der Lernfortschritt weg („Speicherstände sind heilig")
 const SCHEMA_VERSION = 5;                     // bei Datenmodell-Änderungen erhöhen UND Migration ergänzen
 
 // Spaced Repetition (Leitner): Box 0–5. Pause bis zur nächsten Wiederholung in Tagen.
@@ -103,7 +103,7 @@ const MIGRATIONS = {
   // trotzdem erhöht, damit das Datenmodell und die Migrationskette lückenlos dokumentiert sind.
   3: (s) => s,
   // v3 -> v4: Beobachtungsdaten je Frage (`first`, `lastAt`) für die künftige
-  // Bereitschafts-Schätzung (Konzept: workbook.md → „Prüfungsbereitschaft aus
+  // Bereitschafts-Schätzung (Konzept: „Prüfungsbereitschaft aus
   // Beobachtungsdaten"). Rein additiv; der Erstversuch lässt sich für einen Teil
   // des Altbestands eindeutig rekonstruieren:
   //   seen == 1        -> der eine Versuch IST der erste
@@ -218,7 +218,7 @@ function sanitizeState(raw) {
       due: typeof p.due === "string" ? p.due : null,
       // Bereits „sichere" Fragen gelten als schon gemeistert → kein nachträglicher Bonus.
       masteredOnce: (p.masteredOnce === true) || (clampInt(p.box, 0, SRS_INTERVALS_DAYS.length - 1) >= SRS_MASTER_BOX),
-      // Beobachtungsdaten für die Bereitschafts-Schätzung (Konzept in workbook.md):
+      // Beobachtungsdaten für die Bereitschafts-Schätzung :
       // `first` = Ergebnis des ERSTEN Kontakts (generalisiert auf ungesehenen Stoff),
       // `lastAt` = Datum der letzten Antwort (trennt echten Abruf vom Echo derselben Sitzung).
       first: (p.first === "correct" || p.first === "wrong") ? p.first : null,
@@ -311,9 +311,9 @@ function flushSave() { clearTimeout(saveTimer); persistLocal(); }
  * Der Tageszähler ist ein täglicher Anreiz „auf diesem Gerät"; ihn zu synchronisieren
  * würde den verlustarmen Max-Merge verkomplizieren (Zähler müssten summiert werden).
  * Darum wie die Erinnerungs-Uhrzeit rein lokal in localStorage. */
-const GOAL_KEY = "adt_daily_goal";
-const TODAY_KEY = "adt_today";
-const ONBOARD_KEY = "adt_onboarded";
+const GOAL_KEY = "lern_daily_goal";
+const TODAY_KEY = "lern_today";
+const ONBOARD_KEY = "lern_onboarded";
 const GOAL_CHOICES = [5, 10, 15, 20, 30];
 function getDailyGoal() { try { const v = parseInt(localStorage.getItem(GOAL_KEY), 10); return (v >= 1 && v <= 500) ? v : 10; } catch { return 10; } }
 function setDailyGoal(n) { try { localStorage.setItem(GOAL_KEY, String(n)); } catch (e) {} }
@@ -323,11 +323,11 @@ function isOnboarded() { try { return localStorage.getItem(ONBOARD_KEY) === "1";
 function setOnboarded() { try { localStorage.setItem(ONBOARD_KEY, "1"); } catch (e) {} }
 
 /* ---- Zugangsschutz für Lerninhalte (Zugangscode → serverseitige Prüfung) ---- */
-const CONTENT_KEY = "adt_content_v1";        // lokal gecachte, freigeschaltete Inhalte
-const CONTENT_CODE_KEY = "adt_content_code"; // Code (für stille Hintergrund-Aktualisierung)
+const CONTENT_KEY = "lern_content_v1";        // lokal gecachte, freigeschaltete Inhalte
+const CONTENT_CODE_KEY = "lern_content_code"; // Code (für stille Hintergrund-Aktualisierung)
 // Gespeicherter Zugangscode – dient auch als Ausweis gegenüber der Issue-Funktion.
 function getContentCode() { try { return localStorage.getItem(CONTENT_CODE_KEY) || ""; } catch { return ""; } }
-function contentGateActive() { return !!(window.ADT_CONFIG && window.ADT_CONFIG.contentGated); }
+function contentGateActive() { return !!(window.APP_CONFIG && window.APP_CONFIG.contentGated); }
 function contentUnlocked() {
   try { return !!localStorage.getItem(CONTENT_KEY) || localStorage.getItem(CONTENT_IDB_FLAG) === "1"; }
   catch { return false; }
@@ -338,8 +338,8 @@ function contentUnlocked() {
    dann QuotaExceededError. Deshalb liegen die Inhalte in IndexedDB (viel größeres Kontingent);
    in localStorage bleibt nur eine kleine Markierung, damit der Startcheck synchron bleibt.
    localStorage wird weiter als Fallback für kleine Kataloge unterstützt (Altstände). */
-const CONTENT_IDB_FLAG = "adt_content_idb";   // "1" = Inhalte liegen in IndexedDB
-const CONTENT_FP_KEY = "adt_content_fp";      // Fingerabdruck des gespeicherten Katalogs
+const CONTENT_IDB_FLAG = "lern_content_idb";   // "1" = Inhalte liegen in IndexedDB
+const CONTENT_FP_KEY = "lern_content_fp";      // Fingerabdruck des gespeicherten Katalogs
 
 /* Fingerabdruck über Anzahl, IDs und Inhalt jeder Frage. Erkennt auch Korrekturen, die
    die Fragenzahl nicht ändern (umformulierter Fragetext, korrigierte Option/Erklärung).
@@ -365,7 +365,7 @@ function contentFingerprint(content) {
     return `${Q.length}.${Object.keys(content.TOPICS || {}).length}.${h.toString(36)}`;
   } catch (e) { return ""; }
 }
-const IDB_NAME = "adt_content";
+const IDB_NAME = "lern_content";
 const IDB_STORE = "kv";
 const IDB_KEY = "content_v1";
 
@@ -457,10 +457,10 @@ async function hydrateContent() {
 // Stille Aktualisierung: neue Inhalte greifen beim nächsten Start.
 async function refreshContentInBackground() {
   try {
-    if (!contentUnlocked() || !navigator.onLine || !window.ADTSync) return;
+    if (!contentUnlocked() || !navigator.onLine || !window.LernSync) return;
     const code = localStorage.getItem(CONTENT_CODE_KEY);
     if (!code) return;
-    const content = await ADTSync.getContent(code);
+    const content = await LernSync.getContent(code);
     if (!content || !content.TOPICS || !Array.isArray(content.QUESTIONS) || !content.QUESTIONS.length) return;
     // Nur schreiben, wenn sich wirklich etwas geändert hat (spart Schreibzugriffe).
     // Der Vergleich darf NICHT nur die Anzahl prüfen: Korrekturen an Fragetexten,
@@ -474,7 +474,7 @@ async function refreshContentInBackground() {
 }
 
 /* ---- Prüfungs-Historie (geräte-lokal, für die Statistik) ---- */
-const EXAMHIST_KEY = "adt_exam_history";
+const EXAMHIST_KEY = "lern_exam_history";
 function getExamHistory() { try { const a = JSON.parse(localStorage.getItem(EXAMHIST_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
 function pushExamHistory(pct) {
   try {
@@ -486,16 +486,16 @@ function pushExamHistory(pct) {
 }
 
 /* ---- App-Einstellungen (geräte-lokal) ---- */
-const SIZE_KEY = "adt_session_size";   // Fragen pro Übungsrunde (0 = alle)
-const THEME_KEY = "adt_theme";          // "auto" | "light" | "dark"
-const FONT_KEY = "adt_fontsize";        // "normal" | "large"
+const SIZE_KEY = "lern_session_size";   // Fragen pro Übungsrunde (0 = alle)
+const THEME_KEY = "lern_theme";          // "auto" | "light" | "dark"
+const FONT_KEY = "lern_fontsize";        // "normal" | "large"
 function getFontSize() { try { return localStorage.getItem(FONT_KEY) === "large" ? "large" : "normal"; } catch { return "normal"; } }
 function setFontSize(v) { try { v === "large" ? localStorage.setItem(FONT_KEY, "large") : localStorage.removeItem(FONT_KEY); } catch (e) {} applyFontSize(); }
 function applyFontSize() { document.documentElement.setAttribute("data-fontsize", getFontSize()); }
 const SIZE_CHOICES = [10, 15, 20, 30, 0];
 function getSessionSize() { try { const v = parseInt(localStorage.getItem(SIZE_KEY), 10); return SIZE_CHOICES.includes(v) ? v : 15; } catch { return 15; } }
 function setSessionSize(n) { try { localStorage.setItem(SIZE_KEY, String(n)); } catch (e) {} }
-const HAPTICS_KEY = "adt_haptics";      // "on" | "off"
+const HAPTICS_KEY = "lern_haptics";      // "on" | "off"
 function getHaptics() { try { return localStorage.getItem(HAPTICS_KEY) !== "off"; } catch { return true; } }
 function setHaptics(on) { try { localStorage.setItem(HAPTICS_KEY, on ? "on" : "off"); } catch (e) {} }
 function reduceMotion() { try { return window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } }
@@ -534,7 +534,7 @@ applyTheme(); applyFontSize();   // so früh wie möglich anwenden (vermeidet Fl
 
 /* ---- Cloud-Sync-Anbindung (optional, siehe js/sync.js) ---- */
 let syncTimer = null;
-function syncEnabled() { return !!(window.ADTSync && ADTSync.isConfigured() && ADTSync.getCode()); }
+function syncEnabled() { return !!(window.LernSync && LernSync.isConfigured() && LernSync.getCode()); }
 function scheduleSync() {
   if (!syncEnabled()) return;
   clearTimeout(syncTimer);
@@ -546,8 +546,8 @@ function setLocalState(merged) {
   persistLocal();
 }
 async function runSync(opts) {
-  if (!window.ADTSync) return { ok: false };
-  const res = await ADTSync.syncNow(getLocalState, setLocalState, opts || {});
+  if (!window.LernSync) return { ok: false };
+  const res = await LernSync.syncNow(getLocalState, setLocalState, opts || {});
   refreshAfterSync();
   return res;
 }
@@ -558,12 +558,12 @@ function refreshAfterSync() {
 }
 
 /* ---- Web-Push-Erinnerungen (optional, siehe README → „Lern-Erinnerungen") ---- */
-const REMIND_KEY = "adt_reminder_hour";
+const REMIND_KEY = "lern_reminder_hour";
 function pushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 function pushConfigured() {
-  return !!(window.ADT_CONFIG && window.ADT_CONFIG.vapidPublicKey && window.ADTSync && ADTSync.isConfigured());
+  return !!(window.APP_CONFIG && window.APP_CONFIG.vapidPublicKey && window.LernSync && LernSync.isConfigured());
 }
 function getReminderHour() { try { const v = localStorage.getItem(REMIND_KEY); return v == null ? null : parseInt(v, 10); } catch { return null; } }
 function setReminderHour(h) { try { h == null ? localStorage.removeItem(REMIND_KEY) : localStorage.setItem(REMIND_KEY, String(h)); } catch (e) {} }
@@ -597,11 +597,11 @@ async function enableReminders(hour) {
     if (!sub) {
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(window.ADT_CONFIG.vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(window.APP_CONFIG.vapidPublicKey),
       });
     }
     const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || "Europe/Berlin";
-    const ok = await ADTSync.savePush(sub.toJSON(), hour, tz);
+    const ok = await LernSync.savePush(sub.toJSON(), hour, tz);
     if (!ok) { toast("⚠️ Konnte Erinnerung nicht speichern"); return false; }
     setReminderHour(hour);
     return true;
@@ -614,7 +614,7 @@ async function enableReminders(hour) {
 async function disableReminders() {
   try {
     const sub = await getPushSubscription();
-    if (sub) { await ADTSync.removePush(sub.endpoint); await sub.unsubscribe(); }
+    if (sub) { await LernSync.removePush(sub.endpoint); await sub.unsubscribe(); }
   } catch (e) { console.warn("disableReminders", e); }
   setReminderHour(null);
 }
@@ -622,7 +622,7 @@ async function sendTestNotification() {
   try {
     if (Notification.permission !== "granted") { toast("Erst Erinnerung aktivieren"); return; }
     const reg = await navigator.serviceWorker.ready;
-    await reg.showNotification("ADT Trainer", { body: "So sieht deine Lern-Erinnerung aus 📚", icon: "./icons/icon-192.png", badge: "./icons/icon-192.png", tag: "adt-test" });
+    await reg.showNotification("Lern-Trainer", { body: "So sieht deine Lern-Erinnerung aus 📚", icon: "./icons/icon-192.png", badge: "./icons/icon-192.png", tag: "lern-test" });
     toast("🔔 Test-Benachrichtigung gesendet");
   } catch (e) { toast("⚠️ Test nicht möglich"); }
 }
@@ -665,8 +665,8 @@ function levelForXp(xp) {
 }
 function xpFloor(lvl) { return 50 * lvl * (lvl - 1); }
 function levelTitle(lvl) {
-  const t = ["Neuling", "Einsteiger", "Kodier-Lehrling", "Doku-Talent", "Registrierer",
-    "TNM-Kenner", "ICD-O-Profi", "Onko-Experte", "Register-Meister", "Tumordoku-Ass"];
+  const t = ["Neuling", "Einsteiger", "Lernender", "Fleißig", "Fortgeschritten",
+    "Wissensdurstig", "Kenner", "Profi", "Experte", "Gedächtnis-Ass"];
   return t[Math.min(lvl - 1, t.length - 1)];
 }
 
@@ -769,11 +769,11 @@ function dueQuestions(t = todayStr()) {
  * Eigenschaft des Könnens, nicht des Plans. Die Bewertung läuft jetzt über
  * passProbability(); diese Einstellung dient ausschließlich dem Countdown. */
 const STUDY_WEEKS_CHOICES = [1, 2, 3, 4, 6, 8, 12];
-const STUDY_WEEKS_KEY = "adt_study_weeks";
+const STUDY_WEEKS_KEY = "lern_study_weeks";
 // "X Wochen bis zur Prüfung" muss wirklich runterzählen, sonst zeigte der Countdown
 // jeden Tag aufs Neue "X Wochen ab jetzt". STUDY_START_KEY hält den Tag fest, ab dem
 // gezählt wird – erster Aufruf oder jede Änderung der Wochenzahl setzt ihn neu.
-const STUDY_START_KEY = "adt_study_start";
+const STUDY_START_KEY = "lern_study_start";
 function getStudyWeeks() { try { const v = parseInt(localStorage.getItem(STUDY_WEEKS_KEY), 10); return STUDY_WEEKS_CHOICES.includes(v) ? v : 4; } catch { return 4; } }
 function setStudyWeeks(n) { try { localStorage.setItem(STUDY_WEEKS_KEY, String(n)); resetStudyStart(); } catch (e) {} }
 function getStudyStart() {
@@ -795,24 +795,17 @@ function remainingStudyDays() {
  * Statt einer willkürlichen Schwelle („2× ≥ 65 %") die direkte Frage beantworten:
  * Wie wahrscheinlich erreicht sie in einer Prüfung die 50-%-Grenze?
  *
- * Verfahren: je Prüfungsblock ein Beta-Posterior aus ihren Antworten, gewichtet nach
- * der echten Prüfung (40/50/10), daraus eine Beta-Binomial-Vorhersage über eine
- * Prüfung mit EXAM_ASSUMED_N Fragen. Zwei Unsicherheiten stecken darin:
+ * Verfahren: ein Beta-Posterior aus ihren Antworten, daraus eine Beta-Binomial-
+ * Vorhersage über eine Prüfung mit EXAM_ASSUMED_N Fragen. Zwei Unsicherheiten:
  *   1. Wie gut ist sie wirklich? (schrumpft mit jeder Antwort)
  *   2. Wie fällt die Prüfung aus? (bleibt — die Prüfung ist selbst eine Stichprobe)
  * Deshalb steigt die Zahl bei knappem Können auch mit sehr vielen Antworten nicht
  * über ~95 %: das ist ehrlich, kein Rechenfehler.
  *
- * Robustheit geprüft: Ob die echte Prüfung 30 oder 120 Fragen hat, verschiebt das
- * Ergebnis bei 65 % Trefferquote nur von 95 % auf 99 %; der Klumpungsfaktor (1,0–3,0)
- * bewegt es um unter 5 Punkte. Die beiden geschätzten Größen sind also unkritisch.
- *
- * WICHTIG: Die Zahl gilt für UNSEREN Katalog. Die echte Prüfung hat andere Fragen und
- * den Aufgabentyp „Code eingeben", den wir nicht haben — ein Gültigkeits-, kein
- * Stichprobenproblem. Die Anzeige benennt das. */
-const EXAM_ASSUMED_N = 60;      // angenommene Fragenzahl der echten Prüfung (unkritisch, s. o.)
-const EXAM_PASS_RATIO = 0.5;    // Bestehensgrenze laut Prüfungsordnung
-const CLUSTER_DEFF = 1.6;       // Klumpung: Ø 2,2 Fragen je Folie, ρ konservativ 0,5 -> ANNAHME
+ * Die Zahl gilt für DIESEN Fragenkatalog – sie sagt nichts über Fragen, die er nicht enthält. */
+const EXAM_ASSUMED_N = 60;      // angenommene Fragenzahl einer Prüfung (unkritisch)
+const EXAM_PASS_RATIO = 0.5;    // Bestehensgrenze (50 %)
+const CLUSTER_DEFF = 1.6;       // Vorsicht: ähnliche Fragen sind nicht unabhängig -> ANNAHME
 const PASSPROB_MIN_N = 30;
 // Ein Abruf gilt als „kalt", wenn die Frage seit mindestens so vielen Tagen nicht dran war.
 // 1 Tag schließt das Echo derselben Sitzung aus (Wiedererkennen statt Wissen) und ist bei
@@ -851,17 +844,16 @@ function betaBinomTailGE(kmin, N, a, b) {
  *    Altfragen fehlen, und das sind eher die schwierigen.
  * Beides steht als Vorbehalt auf der Karte. */
 function passObservations() {
-  const acc = { K: { n: 0, x: 0 }, C: { n: 0, x: 0 }, S: { n: 0, x: 0 } };
+  const o = { n: 0, x: 0 };
   for (const q of QUESTIONS) {
     const p = S.perQuestion[q.id];
     if (!p) continue;
-    const o = (p.cold === "correct" || p.cold === "wrong") ? p.cold
+    const r = (p.cold === "correct" || p.cold === "wrong") ? p.cold
             : ((p.first === "correct" || p.first === "wrong") ? p.first : null);   // Altdaten ohne Migration
-    if (!o) continue;
-    const b = acc[examBlockOf(q)];
-    b.n++; if (o === "correct") b.x++;
+    if (!r) continue;
+    o.n++; if (r === "correct") o.x++;
   }
-  return acc;
+  return o;
 }
 
 /* `obs` ist optional – ohne Argument werden die echten Beobachtungen genommen.
@@ -869,29 +861,11 @@ function passObservations() {
  * unabhängig davon, wie groß der geladene Katalog gerade ist. */
 function passProbability(obs) {
   obs = obs || passObservations();
-  const blocks = ["K", "C", "S"].filter(b => obs[b].n > 0);
-  const gesamtN = ["K", "C", "S"].reduce((s, b) => s + obs[b].n, 0);
-  if (!blocks.length || gesamtN < PASSPROB_MIN_N) {
-    return { genug: false, n: gesamtN, fehlt: PASSPROB_MIN_N - gesamtN, obs };
-  }
-  // Gewichte der echten Prüfung, auf die Blöcke mit Daten normiert
-  const wSum = blocks.reduce((s, b) => s + EXAM_BLUEPRINT[b], 0);
-  let m = 0, v = 0;
-  for (const b of blocks) {
-    const w = EXAM_BLUEPRINT[b] / wSum;
-    const ne = obs[b].n / CLUSTER_DEFF, xe = obs[b].x / CLUSTER_DEFF;
-    const mb = (xe + 1) / (ne + 2);                 // Beta-Posterior-Mittel (Laplace)
-    const vb = mb * (1 - mb) / (ne + 3);            // dessen Varianz
-    m += w * mb; v += w * w * vb;
-  }
-  // Momentenmethode: gewichtetes Mittel -> Beta(a, b)
-  let a, bb;
-  const common = v > 0 ? (m * (1 - m) / v - 1) : 0;
-  if (common > 0) { a = m * common; bb = (1 - m) * common; }
-  else { a = 1 + m; bb = 1 + (1 - m); }             // Rückfall, sollte nicht vorkommen
-  const p = betaBinomTailGE(Math.ceil(EXAM_ASSUMED_N * EXAM_PASS_RATIO), EXAM_ASSUMED_N, a, bb);
-  const ohneDaten = ["K", "C", "S"].filter(b => obs[b].n === 0);
-  return { genug: true, p, n: gesamtN, obs, ohneDaten, schnitt: m };
+  if (obs.n < PASSPROB_MIN_N) return { genug: false, n: obs.n, fehlt: PASSPROB_MIN_N - obs.n, obs };
+  const ne = obs.n / CLUSTER_DEFF, xe = obs.x / CLUSTER_DEFF;
+  const m = (xe + 1) / (ne + 2);                    // Beta-Posterior-Mittel (Laplace)
+  const p = betaBinomTailGE(Math.ceil(EXAM_ASSUMED_N * EXAM_PASS_RATIO), EXAM_ASSUMED_N, m * (ne + 2), (1 - m) * (ne + 2));
+  return { genug: true, p, n: obs.n, obs, schnitt: m };
 }
 
 // Sprachliche Einordnung – nie „du bestehst", immer als Aussage über die Daten.
@@ -949,45 +923,25 @@ function readinessCardHTML() {
   const head = `<span class="ready-head"><b>Prüfungsprognose</b><span class="ready-label" style="color:${lbl.col}">${lbl.txt}</span></span>`;
   const bar = `<span class="ready-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${balken}">
       <span class="fill" style="width:${balken}%;background:${lbl.col}"></span>
-      <span class="mark" style="left:50%" title="Bestehensgrenze der echten Prüfung"></span>
+      <span class="mark" style="left:50%" title="Bestehensgrenze (50 %)"></span>
     </span>`;
   const kern = `<span class="ready-sub"><b style="font-size:15px;color:${lbl.col}">${pct}</b> – aus ${pp.n.toLocaleString("de-DE")} kalt abgerufenen Fragen</span>`;
 
-  // Blockweise Aufschlüsselung: wo hakt es?
-  const blockRows = ["K", "C", "S"].map(b => {
-    const o = pp.obs[b];
-    const anteil = o.n ? Math.round(o.x / o.n * 100) : null;
-    const wert = anteil === null ? "noch keine Daten" : `${anteil} % richtig (${o.n} Fragen)`;
-    return `<div class="theme-row"><span class="tn">${EXAM_BLOCK_NAMES[b]}<br><span class="muted" style="font-size:12px">${EXAM_BLUEPRINT[b]} % der Prüfung</span></span>
-      <span class="tp" style="width:auto;text-align:right">${wert}</span></div>`;
-  }).join("");
-
-  const hinweis = pp.ohneDaten.length
-    ? `<span class="ready-sub" style="color:#ff9500">Für ${pp.ohneDaten.map(b => EXAM_BLOCK_NAMES[b]).join(" und ")} liegen noch keine Daten vor – die Zahl stützt sich nur auf die übrigen Blöcke.</span>`
-    : "";
-
   return `<div class="ready-card">
     ${head}${bar}${kern}
-    ${hinweis}
-    <div style="margin-top:10px">${blockRows}</div>
     <span class="ready-sub muted" style="margin-top:10px">Gerechnet wird aus deinem Ergebnis bei <b>kalten Abrufen</b>: jede Frage zählt einmal,
-      und zwar mit dem letzten Mal, an dem sie kam, ohne an dem Tag schon dran gewesen zu sein. Der erste Kontakt gehört dazu –
-      spätere Wiederholungen aber auch, sonst könnte die Zahl deinem Lernfortschritt nie folgen. Gewichtet wird wie die echte Prüfung
-      (${EXAM_BLUEPRINT.K}/${EXAM_BLUEPRINT.C}/${EXAM_BLUEPRINT.S}), und vorsichtig gerechnet: Fragen zur selben Folie zählen
-      nicht als voneinander unabhängig.</span>
+      und zwar mit dem letzten Mal, an dem sie kam, ohne an dem Tag schon dran gewesen zu sein. Vorsichtig gerechnet: ähnliche Fragen
+      zählen nicht als voneinander unabhängig.</span>
     <span class="ready-sub muted" style="margin-top:6px">Zwei Unsicherheiten stecken darin: wie gut du wirklich bist (wird mit jeder
       Antwort genauer) und wie die Prüfung ausfällt (bleibt – sie ist selbst eine Stichprobe). Deshalb steigt der Wert bei knappem
       Stand auch mit viel Übung nicht über ~95 %.</span>
-    <span class="ready-sub muted" style="margin-top:6px">Die Zahl ist eher etwas zu freundlich als zu streng: Wiederholungen sind nicht zufällig
-      verteilt – falsche Fragen kommen früher zurück als richtige, Verbesserungen fallen also häufiger auf als Verschlechterungen.</span>
-    <span class="ready-sub muted" style="margin-top:6px"><b>Vorbehalt:</b> Die Zahl gilt für diesen Fragenkatalog. Die echte Prüfung
-      hat andere Fragen und den Aufgabentyp „Code eingeben", den diese App nicht übt.</span>
+    <span class="ready-sub muted" style="margin-top:6px"><b>Vorbehalt:</b> Die Zahl gilt für diesen Fragenkatalog.</span>
   </div>`;
 }
 
 /* Lerntempo-Log (lokal): einmal je Tag der aktuelle „sicher"-Stand, für die
  * Prognose „bei deinem Tempo bist du in ~N Tagen bereit". */
-const MLOG_KEY = "adt_mastery_log";
+const MLOG_KEY = "lern_mastery_log";
 function logMastery() {
   try {
     const t = todayStr(), m = masteredCount();
@@ -1031,14 +985,12 @@ function shuffle(arr) {
 function respList(resp) { return resp == null ? [] : (Array.isArray(resp) ? resp : Array.from(resp)); }
 function isInputType(q) { return q.type === "numeric" || q.type === "code"; }   // freie Eingabe statt Optionen
 
-/* Kode-Vergleich. Geprüft wird das Wissen „welcher Kode", nicht die Tippgenauigkeit:
- * Groß-/Kleinschreibung, Leerzeichen und die Trennzeichen (Punkt, Komma, Schrägstrich,
- * Bindestrich) werden weggelassen. Damit gilt „c504" ebenso wie „C50.4" und „8500 3"
- * wie „8500/3". Das ist bewusst großzügig – in der Prüfung tippt man in ein Feld, und
- * ein fehlender Punkt ist kein fachlicher Fehler. Die saubere Schreibweise steht in der
- * Rückmeldung. Reihenfolge und Ziffern müssen dagegen exakt stimmen. */
+/* Antwort-Vergleich für Eingabe-Aufgaben. Geprüft wird das Wissen, nicht die Tippgenauigkeit:
+ * Groß-/Kleinschreibung, Leerzeichen und Satzzeichen werden weggelassen. Damit gilt
+ * „new york" ebenso wie „New York!". Buchstaben (inkl. Umlaute), Ziffern und deren
+ * Reihenfolge müssen stimmen. */
 function codeKey(v) {
-  return String(v == null ? "" : v).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return String(v == null ? "" : v).toLocaleUpperCase("de-DE").replace(/[^\p{L}\p{N}]/gu, "");
 }
 function codeAccepted(q) {
   const list = [q.answer].concat(Array.isArray(q.accept) ? q.accept : []);
@@ -1074,7 +1026,7 @@ function gradeQuestion(q, resp) {
     const k = codeKey(a[0]);
     return !!k && codeAccepted(q).includes(k);
   }
-  // single/multi: Alles-oder-nichts (Prüfungsregel) – exakt die richtige Menge.
+  // single/multi: Alles-oder-nichts (Alles-oder-nichts) – exakt die richtige Menge.
   const correct = new Set(q.correct);
   const picked = new Set(a);
   if (picked.size !== correct.size) return false;
@@ -1297,7 +1249,7 @@ function reportsAsText() {
 const FEEDBACK_LABEL = "frage-feedback";
 const ISSUE_URL_MAX = 7000;      // konservativ – lange URLs schlucken manche Browser stumm
 function feedbackRepo() {
-  const r = (window.ADT_CONFIG && ADT_CONFIG.feedbackRepo) || "";
+  const r = (window.APP_CONFIG && APP_CONFIG.feedbackRepo) || "";
   return /^[\w.-]+\/[\w.-]+$/.test(String(r).trim()) ? String(r).trim() : "";
 }
 // Vorbefüllter Link; kürzt den Text notfalls, damit die URL nicht abgeschnitten wird.
@@ -1342,7 +1294,7 @@ function openIssue(url) {
  * Klappt das nicht (Funktion nicht deployt, offline, kein Zugangscode), bleibt der
  * vorbefüllte Link als Rückfallebene – gemeldet wird also immer, nur der Weg unterscheidet sich. */
 function issueApiPossible() {
-  return !!(window.ADTSync && ADTSync.isConfigured() && ADTSync.createIssue && getContentCode());
+  return !!(window.LernSync && LernSync.isConfigured() && LernSync.createIssue && getContentCode());
 }
 function issueTitleFor(r) {
   const t = r.q ? TOPICS[r.q.topic] : null;
@@ -1360,7 +1312,7 @@ function issueBodyFor(r) {
 // Ergebnis: { ok, number, url, existing } | { error }
 async function createIssueDirect(r) {
   if (!issueApiPossible()) return { error: "not-possible" };
-  const res = await ADTSync.createIssue({
+  const res = await LernSync.createIssue({
     code: getContentCode(),
     id: r.id,
     title: issueTitleFor(r),
@@ -1525,7 +1477,7 @@ function checkCurrent() {
   const prevAt = /^\d{4}-\d{2}-\d{2}$/.test(String(p.lastAt || "")) ? p.lastAt : null;
   p.seen += 1;
   if (ok) { p.correct += 1; p.lastResult = "correct"; } else { p.wrong += 1; p.lastResult = "wrong"; }
-  // Beobachtungsdaten (Konzept: workbook.md). Der erste Kontakt wird genau einmal
+  // Beobachtungsdaten für die Prognose. Der erste Kontakt wird genau einmal
   // festgehalten und nie überschrieben. Zusätzlich wird der letzte KALTE Abruf gebucht:
   // jede Antwort auf eine Frage, die seit mindestens COLD_GAP_DAYS nicht dran war
   // (inkl. des Erstkontakts). Nur solche Abrufe messen Wissen statt Kurzzeit-Echo –
@@ -1691,7 +1643,7 @@ const ICONS = {
 // Achtung: sw.js liest diese Zeile beim Update-Check per Regex aus der ausgelieferten
 // Datei, um sie mit der laufenden Fassung zu vergleichen. Schreibweise bitte so lassen –
 // und in Kommentaren keine zweite Zuweisung dieses Namens notieren (die käme zuerst).
-const APP_VERSION = "0.45.0";
+const APP_VERSION = "1.0.0";
 // Datenstand des Fragenkatalogs: "<Build-Datum>-<Kurz-Hash des Inhalts>", von
 // pipeline/build_content.py erzeugt. Der Hash hängt nur vom Inhalt ab — zwei
 // Auslieferungen mit identischen Fragen haben denselben Hash-Anteil, auch an
@@ -1709,7 +1661,7 @@ function icon(name) {
 function iconTile(name, tint) {
   return '<span class="icon-tile" style="--tint:' + tint + '">' + icon(name) + "</span>";
 }
-const TOPIC_ICON = { grundlagen: "hexagon", tnm: "ruler", icdo: "scope", icd10: "book", grading: "target", register: "columns", epidemiologie: "chart", therapie: "capsule", datenschutz: "lock" };
+const TOPIC_ICON = { lernen: "brain", geografie: "mountain", englisch: "book", mathe: "ruler", wissen: "star" };
 const BADGE_ICON = {
   first: { i: "flag", c: "#34c759" }, ten: { i: "grid", c: "#007aff" }, fifty: { i: "medal", c: "#ff9500" },
   hundred: { i: "star", c: "#ff2d55" },
@@ -1721,7 +1673,7 @@ const BADGE_ICON = {
   secure25: { i: "shield", c: "#34c759" }, streak14: { i: "flame", c: "#ff6b22" }, allmaster: { i: "trophy", c: "#ffb300" },
 };
 
-const BAR_TITLES = { home: "ADT Trainer", topics: "Themen", badges: "Erfolge", stats: "Statistik", settings: "Einstellungen", info: "Info", result: "Ergebnis", quiz: "", exam: "Prüfung", examresult: "Ergebnis", reports: "Gemeldete Fragen" };
+const BAR_TITLES = { home: "Lern-Trainer", topics: "Themen", badges: "Erfolge", stats: "Statistik", settings: "Einstellungen", info: "Info", result: "Ergebnis", quiz: "", exam: "Prüfung", examresult: "Ergebnis", reports: "Gemeldete Fragen" };
 function setStreak() {
   if (streakEl) streakEl.innerHTML = '<span class="streak-flame">' + icon("flame") + "</span>" + S.streak;
 }
@@ -1731,7 +1683,7 @@ function updateAppbar(view) {
   const noLargeTitle = view === "quiz" || view === "result" || view === "exam" || view === "examresult";
   const h1 = document.querySelector(".appbar h1");
   if (h1) {
-    h1.textContent = BAR_TITLES[view] != null ? BAR_TITLES[view] : "ADT Trainer";
+    h1.textContent = BAR_TITLES[view] != null ? BAR_TITLES[view] : "Lern-Trainer";
     // Doppeltes <h1> vermeiden: Wo die Ansicht einen Large-Title (h1) hat, ist der
     // Balken-Titel nur ein visuelles Duplikat → für Screenreader ausblenden.
     h1.setAttribute("aria-hidden", noLargeTitle ? "false" : "true");
@@ -1748,9 +1700,9 @@ function updateAppbar(view) {
  *    (bewusster Wiedereinstieg statt Dauer-Uhr).
  *  - Zustand über Zeitstempel (endsAt), das Intervall dient nur der Anzeige.
  * ------------------------------------------------------------------ */
-const POMO_KEY = "adt_pomo_v1";
-const POMO_DONE_KEY = "adt_pomo_done";     // Tageszähler getrennt vom Timer – überlebt „Beenden"
-const POMO_GOAL_KEY = "adt_pomo_goal";     // Tagesziel Runden, einstellbar (0 = kein Ziel)
+const POMO_KEY = "lern_pomo_v1";
+const POMO_DONE_KEY = "lern_pomo_done";     // Tageszähler getrennt vom Timer – überlebt „Beenden"
+const POMO_GOAL_KEY = "lern_pomo_goal";     // Tagesziel Runden, einstellbar (0 = kein Ziel)
 const POMO_WORK = 25 * 60 * 1000, POMO_BREAK = 5 * 60 * 1000, POMO_LONG = 15 * 60 * 1000, POMO_EVERY = 4;
 const POMO_ABANDON_MS = 60 * 60 * 1000;    // länger als 1 h abgelaufen = Sitzung verlassen
 // 4 Runden = ein voller Zyklus bis zur langen Pause (~2 Std. inkl. Pausen) – als
@@ -1929,9 +1881,8 @@ function renderHome() {
   const acc = overallAccuracy();
   const due = dueQuestions().length;
   const weak = weakQuestions().length;
-  // Kodier-Aufgaben („Kode eingeben") sind der Prüfungsteil, den es sonst nirgends gezielt
-  // gibt: die Simulation zieht sie nur zufällig mit. Der Knopf erscheint nur, wenn der
-  // geladene Katalog welche enthält – der öffentliche Beispielkatalog hat wenige, ältere gar keine.
+  // Eingabe-Aufgaben („Antwort eintippen") gezielt üben – aktiver Abruf statt Wiedererkennen.
+  // Der Knopf erscheint nur, wenn der geladene Katalog welche enthält.
   const codeCount = QUESTIONS.filter(q => q.type === "code").length;
 
   // Tagesziel-Ring (lokal)
@@ -1976,7 +1927,7 @@ function renderHome() {
     </div>`;
 
   app.innerHTML = `
-    <h1 class="large-title">ADT Trainer<span class="sub">${esc(levelTitle(lvl))} · Level ${lvl}</span></h1>
+    <h1 class="large-title">Lern-Trainer<span class="sub">${esc(levelTitle(lvl))} · Level ${lvl}</span></h1>
     ${installTip}
     <div class="level-card">
       <div class="row"><span class="lvl">Level ${lvl}</span><span class="xp">${into} / ${span} XP</span></div>
@@ -1996,7 +1947,7 @@ function renderHome() {
     <div class="ios-group">
       <button class="mode-btn" data-act="mixed">${iconTile("shuffle", "#007aff")}<span class="txt"><b>Gemischtes Training</b><p>Zufällige Fragen aus allen Themen</p></span><span class="chev">›</span></button>
       <button class="mode-btn" data-act="topics">${iconTile("grid", "#5e5ce6")}<span class="txt"><b>Nach Thema lernen</b><p>Gezielt einzelne Themengebiete üben</p></span><span class="chev">›</span></button>
-      ${codeCount ? `<button class="mode-btn" data-act="code">${iconTile("keypad", "#7c5cbf")}<span class="txt"><b>Kodes eintragen</b><p>${codeCount} Aufgaben zum Nachschlagen</p></span><span class="chev">›</span></button>` : ""}
+      ${codeCount ? `<button class="mode-btn" data-act="code">${iconTile("keypad", "#7c5cbf")}<span class="txt"><b>Antworten eintippen</b><p>${codeCount} Aufgaben – aktiv abrufen statt wiedererkennen</p></span><span class="chev">›</span></button>` : ""}
       <button class="mode-btn" data-act="due" ${due ? "" : "disabled"}>${iconTile("repeat", "#ff9500")}<span class="txt"><b>Fällige Wiederholungen</b><p>${due ? due + " Frage" + (due === 1 ? "" : "n") + " heute fällig" : "Super – heute nichts fällig"}</p></span><span class="chev">›</span></button>
       <button class="mode-btn" data-act="weak" ${weak ? "" : "disabled"}>${iconTile("target", "#ff3b30")}<span class="txt"><b>Schwachstellen üben</b><p>${weak ? weak + " Frage" + (weak === 1 ? "" : "n") + " noch nicht sicher" : "Alles sitzt – keine Schwachstellen"}</p></span><span class="chev">›</span></button>
       <button class="mode-btn" data-act="pomo">${iconTile("timer", "#af52de")}<span class="txt"><b>Lern-Timer (Pomodoro)</b><p id="pomoModeSub">${pomoSubtitle()}</p></span><span class="chev">›</span></button>
@@ -2018,7 +1969,7 @@ function renderHome() {
 
     <p class="muted center" style="margin-top:24px;margin-bottom:4px">${QUESTIONS.length} Fragen · ${Object.keys(TOPICS).length} Themen${contentVersionLabel() ? " · " + esc(contentVersionLabel()) : ""}</p>
     <button class="link-danger" data-act="reset">Fortschritt zurücksetzen</button>
-    <p class="muted center" style="margin-top:16px;font-size:12px;opacity:.8">Inoffiziell · kein Produkt der ADT e. V. · <span class="link" data-act="info">Datenschutz</span></p>
+    <p class="muted center" style="margin-top:16px;font-size:12px;opacity:.8"><span class="link" data-act="settings">Eigene Inhalte importieren</span> · <span class="link" data-act="info">Datenschutz</span></p>
   `;
 
   app.querySelectorAll("[data-act]").forEach(el => el.addEventListener("click", () => {
@@ -2041,9 +1992,9 @@ function renderHome() {
 }
 
 function syncSubtitle() {
-  if (!window.ADTSync || !ADTSync.isConfigured()) return "Noch nicht eingerichtet";
-  if (!ADTSync.getCode()) return "Einrichten – auf allen Geräten weiterlernen";
-  const last = ADTSync.getLastSynced();
+  if (!window.LernSync || !LernSync.isConfigured()) return "Noch nicht eingerichtet";
+  if (!LernSync.getCode()) return "Einrichten – auf allen Geräten weiterlernen";
+  const last = LernSync.getLastSynced();
   return last ? "Aktiv · zuletzt " + new Date(last).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Aktiv";
 }
 
@@ -2051,10 +2002,10 @@ function syncSubtitle() {
 function renderSettings() {
   updateAppbar("settings");
   actionbar.classList.add("hidden");
-  const hasSync = !!window.ADTSync;
-  const configured = hasSync && ADTSync.isConfigured();
-  const code = hasSync ? ADTSync.getCode() : null;
-  const last = hasSync ? ADTSync.getLastSynced() : null;
+  const hasSync = !!window.LernSync;
+  const configured = hasSync && LernSync.isConfigured();
+  const code = hasSync ? LernSync.getCode() : null;
+  const last = hasSync ? LernSync.getLastSynced() : null;
   const lastTxt = last ? new Date(last).toLocaleString("de-DE") : "noch nie";
 
   let body;
@@ -2122,16 +2073,19 @@ function renderSettings() {
         <p>${nRep ? "Ansehen, kommentieren, exportieren" : "Beim Üben unter der Frage auf „" + REPORT_LABEL_OFF + "“ tippen"}</p></span><span class="chev">›</span></button>
     </div>`;
 
-  // Lerninhalte: erlaubt das erneute Freischalten mit einem neuen Zugangscode.
-  // Ohne diesen Weg bleibt ein Gerät für immer auf dem Katalog hängen, mit dem es
-  // einmal freigeschaltet wurde – der Freischalt-Bildschirm erscheint nur, wenn noch
-  // keine Inhalte gespeichert sind, und die stille Hintergrund-Aktualisierung nutzt
-  // den alten, nach einem Katalog-Wechsel ungültigen Code.
-  const content = contentGateActive() ? `
+  // Lerninhalte: eigene Inhalte importieren, Vorlage holen, zurück zu den Beispielen.
+  // Bei aktivem Zugangsschutz zusätzlich: mit neuem Zugangscode neu freischalten.
+  const custom = customContentActive();
+  const content = `
     <div class="section-title">Lerninhalte</div>
+    <p class="muted" style="margin:0 4px 8px;font-size:13px">Aktuell ${QUESTIONS.length} Fragen · ${Object.keys(TOPICS).length} Themen · ${custom ? "eigene Inhalte" : (contentGateActive() && contentUnlocked() ? "freigeschaltete Inhalte" : "Beispiel-Inhalte")}${contentVersionLabel() ? " · " + esc(contentVersionLabel()) : ""}</p>
     <div class="ios-group">
-      <button class="mode-btn" id="btnRelock">${iconTile("lock", "#ff9500")}<span class="txt"><b>Inhalte neu freischalten</b><p>Aktuell ${QUESTIONS.length} Fragen · ${Object.keys(TOPICS).length} Themen${contentVersionLabel() ? " · " + esc(contentVersionLabel()) : ""}. Nötig, wenn es einen neuen Zugangscode gibt.</p></span><span class="chev">›</span></button>
-    </div>` : "";
+      <button class="mode-btn" id="btnContentImport">${iconTile("import", "#34c759")}<span class="txt"><b>Eigene Inhalte importieren</b><p>CSV/Text (Thema;Frage;Antwort) oder JSON – ersetzt die aktuellen Fragen</p></span><span class="chev">›</span></button>
+      <button class="mode-btn" id="btnContentTemplate">${iconTile("export", "#007aff")}<span class="txt"><b>Vorlage herunterladen</b><p>Beispiel-Datei zum Ausfüllen (Excel, Numbers, Texteditor)</p></span><span class="chev">›</span></button>
+      ${custom ? `<button class="mode-btn" id="btnContentSample">${iconTile("repeat", "#ff9500")}<span class="txt"><b>Beispiel-Inhalte wiederherstellen</b><p>Eigene Inhalte von diesem Gerät entfernen</p></span><span class="chev">›</span></button>` : ""}
+      ${contentGateActive() ? `<button class="mode-btn" id="btnRelock">${iconTile("lock", "#ff9500")}<span class="txt"><b>Inhalte neu freischalten</b><p>Nötig, wenn es einen neuen Zugangscode gibt.</p></span><span class="chev">›</span></button>` : ""}
+    </div>
+    <input type="file" id="contentFile" accept=".csv,.tsv,.txt,.json,text/csv,text/plain,application/json" style="display:none">`;
 
   const theme = getTheme(), size = getSessionSize(), haptics = getHaptics(), font = getFontSize(), pomoGoal = getPomoGoal();
   const tOpt = (v, l) => `<option value="${v}" ${theme === v ? "selected" : ""}>${l}</option>`;
@@ -2174,7 +2128,7 @@ function renderSettings() {
     </div>`;
 
   app.innerHTML = `<h1 class="large-title">Einstellungen</h1>${studyPlan}${prefs}
-    <div class="section-title">Geräteübergreifende Synchronisation</div>${body}${backup}${feedback}${content}${remind}${appUpdate}`;
+    ${content}<div class="section-title">Geräteübergreifende Synchronisation</div>${body}${backup}${feedback}${remind}${appUpdate}`;
 
   const $ = (id) => document.getElementById(id);
   const stTheme = $("setTheme"); if (stTheme) stTheme.addEventListener("change", () => { setTheme(stTheme.value); toast("🎨 Design übernommen"); });
@@ -2204,10 +2158,17 @@ function renderSettings() {
     const ok = await modalChoice("Verbindung trennen",
       "Code von diesem Gerät entfernen? Der Fortschritt bleibt lokal und in der Cloud erhalten.",
       [{ label: "Trennen", value: true, variant: "danger" }, { label: "Abbrechen", value: false, variant: "ghost" }]);
-    if (ok) { ADTSync.setCode(null); toast("Verbindung getrennt"); renderSettings(); }
+    if (ok) { LernSync.setCode(null); toast("Verbindung getrennt"); renderSettings(); }
   });
   const bDel = $("btnDeleteCloud"); if (bDel) bDel.addEventListener("click", deleteCloudData);
   const bRe = $("btnRelock"); if (bRe) bRe.addEventListener("click", relockContent);
+  const bCi = $("btnContentImport"); const cf = $("contentFile");
+  if (bCi && cf) {
+    bCi.addEventListener("click", () => cf.click());
+    cf.addEventListener("change", () => { if (cf.files && cf.files[0]) importContentFile(cf.files[0]); cf.value = ""; });
+  }
+  const bCt = $("btnContentTemplate"); if (bCt) bCt.addEventListener("click", downloadContentTemplate);
+  const bCs = $("btnContentSample"); if (bCs) bCs.addEventListener("click", restoreSampleContent);
   const bRep = $("btnReports"); if (bRep) bRep.addEventListener("click", () => go("reports"));
   const bUp = $("btnUpdate"); if (bUp) bUp.addEventListener("click", () => checkForUpdate());
   const bEx = $("btnExport"); if (bEx) bEx.addEventListener("click", exportProgress);
@@ -2275,16 +2236,16 @@ async function renderReminderBox() {
 
 function updateSyncChip() {
   const chip = document.getElementById("syncChip");
-  if (!chip || !window.ADTSync) return;
+  if (!chip || !window.LernSync) return;
   if (!navigator.onLine) chip.textContent = "🔌 offline · wird später abgeglichen";
-  else if (ADTSync.isSyncing()) chip.textContent = "🔄 synchronisiere…";
-  else if (ADTSync.hasPending && ADTSync.hasPending()) chip.textContent = "⏳ Abgleich ausstehend";
+  else if (LernSync.isSyncing()) chip.textContent = "🔄 synchronisiere…";
+  else if (LernSync.hasPending && LernSync.hasPending()) chip.textContent = "⏳ Abgleich ausstehend";
   else chip.textContent = "☁️ verbunden";
 }
 
 async function createSyncCode() {
-  const code = ADTSync.generateCode();
-  ADTSync.setCode(code);
+  const code = LernSync.generateCode();
+  LernSync.setCode(code);
   toast("✨ Sync-Code erstellt");
   await runSync({});
   renderSettings();
@@ -2296,8 +2257,8 @@ function showConnectBox() {
   box.innerHTML = `
     <div class="q-card" style="margin-top:12px">
       <p class="muted" style="margin:0 0 8px">Code vom anderen Gerät eingeben:</p>
-      <input id="codeInput" inputmode="text" autocapitalize="characters" autocomplete="off"
-        placeholder="ADT-XXXXX-XXXXX-XXXXX"
+      <input id="codeInput" inputmode="text" autocapitalize="none" autocomplete="off"
+        placeholder="LRN-XXXXX-XXXXX-XXXXX"
         style="width:100%;padding:14px;font-size:17px;border-radius:12px;border:2px solid var(--border);background:var(--bg);color:var(--text);letter-spacing:1px">
       <button class="btn-primary" id="btnDoConnect" style="margin-top:12px">Verbinden</button>
     </div>`;
@@ -2308,9 +2269,9 @@ function showConnectBox() {
 }
 
 async function connectWithCode(raw) {
-  const code = ADTSync.normalizeCode(raw);
+  const code = LernSync.normalizeCode(raw);
   if (!code || code.replace(/[^A-Z0-9]/g, "").length < 8) { toast("⚠️ Ungültiger Code"); return; }
-  ADTSync.setCode(code);
+  LernSync.setCode(code);
   toast("🔗 Verbinde…");
   const r = await runSync({});
   if (r && r.ok) toast(r.merged ? "✅ Fortschritt übernommen" : "✅ Verbunden");
@@ -2429,9 +2390,9 @@ function renderQuiz() {
     const val = picks.size ? String(Array.from(picks)[0]) : "";
     const state = checked ? (SESSION.correctFlags[i] ? " correct" : " wrong") : "";
     answerArea = `<div class="num-input code${state}">
-      <input type="text" inputmode="text" id="codeField" autocomplete="off" autocapitalize="characters"
+      <input type="text" inputmode="text" id="codeField" autocomplete="off" autocapitalize="none"
         autocorrect="off" spellcheck="false" ${checked ? "disabled" : ""}
-        value="${esc(val)}" placeholder="${esc(typeof q.placeholder === "string" && q.placeholder ? q.placeholder : "z. B. C50.4")}" aria-label="Kode eingeben">
+        value="${esc(val)}" placeholder="${esc(typeof q.placeholder === "string" && q.placeholder ? q.placeholder : "Antwort eintippen")}" aria-label="Antwort eingeben">
     </div>`;
   } else {
     const groupRole = q.type === "single" ? "radiogroup" : "group";
@@ -2448,12 +2409,12 @@ function renderQuiz() {
 
   const typeChip = numeric
     ? '<span class="chip">Rechenaufgabe</span>'
-    : (isCode ? '<span class="chip code">Kode eingeben</span>'
+    : (isCode ? '<span class="chip code">Antwort eintippen</span>'
     : (q.type === "multi" ? '<span class="chip multi">Mehrfachauswahl</span>' : '<span class="chip">Einfachauswahl</span>'));
   const hint = numeric
     ? '<p class="q-hint">Ergebnis als Zahl eingeben (Komma oder Punkt).</p><p class="q-hint err" id="numHint" role="alert" style="display:none"></p>'
-    : (isCode ? '<p class="q-hint">Kode eintragen. Punkte, Leerzeichen und Groß-/Kleinschreibung sind egal – die Ziffern und ihre Reihenfolge zählen.</p>'
-    : (q.type === "multi" ? '<p class="q-hint">Es können mehrere Antworten richtig sein. Nur vollständig richtig zählt (Prüfungsregel).</p>' : ''));
+    : (isCode ? '<p class="q-hint">Antwort eintippen. Groß-/Kleinschreibung, Leerzeichen und Satzzeichen sind egal.</p>'
+    : (q.type === "multi" ? '<p class="q-hint">Es können mehrere Antworten richtig sein. Nur vollständig richtig zählt (Alles-oder-nichts).</p>' : ''));
 
   app.innerHTML = `
     <div class="quiz-top">
@@ -2573,7 +2534,7 @@ function renderResult(right, total, pct) {
 /* ------------------------------------------------------------------ *
  * 5b) Prüfungsmodus – echte Simulation (eigener Flow, persistent)
  * ------------------------------------------------------------------ */
-const EXAM_KEY = "adt_exam_session_v1";
+const EXAM_KEY = "lern_exam_session_v1";
 const EXAM_SECONDS_PER_Q = 90;      // Zeitbudget je Frage (Simulation)
 let EXAM = null;                    // laufende Prüfung
 let EXAM_RESULT = null;             // Ergebnis nach Abgabe
@@ -2598,88 +2559,22 @@ function loadExam() {
 }
 function removeExam() { try { localStorage.removeItem(EXAM_KEY); } catch (e) {} }
 
-// Blueprint: Fragen je Thema proportional zur Verfügbarkeit ziehen.
-/* ---- Prüfungs-Blueprint: die echte Gewichtung nachbilden ----
- * Die ADT-Prüfungsmail (15.09.2026) nennt die Gewichtung der echten Prüfung:
- *   Allgemein (klinische Referierende + Block I) 40 % · Codierung 50 % · Statistik 10 %
- * Vorher zog die Simulation faktisch EINE Frage je Thema (111 Themen → 30 zufällig),
- * gewichtete also nach Themenzahl statt nach Prüfungsrelevanz: ~55/39/6 statt 40/50/10.
- * Codierung – die Hälfte der echten Prüfung – war damit der schwächst getestete Block.
- *
- * Zuordnung als Regel statt als 111-Zeilen-Tabelle: robust gegenüber Katalog-Updates
- * (neue Themen werden automatisch einsortiert) und funktioniert auch mit dem kleinen
- * Beispielkatalog. Lesart: „Codierung" = die Tätigkeit (TNM/ICD-O/OPS/oBDS vergeben),
- * unabhängig davon, welches Skript sie gelehrt hat. Die Mail ließe auch die Lesart zu,
- * Block I (medgrund/basisdok/klassqual/kregister) komplett zu „Allgemein" zu zählen –
- * dann läge der Katalog bei 63/31/6. Beides ist vertretbar; Regel unten anpassbar. */
-const EXAM_BLUEPRINT = { K: 40, C: 50, S: 10 };   // Allgemein/Klinik · Codierung · Statistik
-const EXAM_BLOCK_NAMES = { K: "Allgemein & Klinik", C: "Codierung", S: "Statistik" };
-const EXAM_STAT_RX = /^(deskstat|analstat)|statistik|^patho2_studien$/i;
-const EXAM_COD_RX = /^(tnm|icdo|befund|erheb|erhebbearb|basisdok)(_|$)|tnm|staging|grading|kodierung|icd|\bops\b|obds|dokumentation|klassifikation|datenqualitaet|morpholog|histopathologie|meldew|meldeb/i;
-/* Ordnet eine Frage einem der drei Prüfungsblöcke zu. Nimmt die FRAGE, nicht nur das
- * Thema: Eine Kodier-Aufgabe („Kode eingeben") ist immer Codierung, auch wenn sie in
- * einem klinischen Thema steht — die Lymphom- und Leukämie-Kodes zählten sonst als
- * „Allgemein & Klinik" und die Simulation zöge zu wenig Codierung. Ein String wird
- * weiterhin als Themenschlüssel akzeptiert. */
-function examBlockOf(q) {
-  if (q && typeof q === "object") {
-    if (q.type === "code") return "C";
-    q = q.topic;
-  }
-  const k = String(q || "");
-  if (EXAM_STAT_RX.test(k)) return "S";
-  return EXAM_COD_RX.test(k) ? "C" : "K";
-}
-
+// Prüfung zusammenstellen: reihum über alle Themen ziehen, damit jedes Thema vertreten ist.
 function buildExamQuestions() {
   const target = Math.min(30, QUESTIONS.length);
-  const BL = ["K", "C", "S"];
-  // Fragen nach Block und darin nach Thema bündeln
-  const byBlock = { K: {}, C: {}, S: {} };
-  for (const q of QUESTIONS) {
-    const b = examBlockOf(q);
-    (byBlock[b][q.topic] = byBlock[b][q.topic] || []).push(q);
-  }
-  const avail = {}, slots = {};
-  for (const b of BL) {
-    avail[b] = Object.values(byBlock[b]).reduce((s, a) => s + a.length, 0);
-    slots[b] = Math.min(avail[b], Math.round(target * EXAM_BLUEPRINT[b] / 100));
-  }
-  // Rundungsdrift und Blöcke ohne genug Fragen ausgleichen – zuerst Codierung
-  // auffüllen (größter Anteil der echten Prüfung), Statistik zuletzt kürzen.
-  let rest = target - BL.reduce((s, b) => s + slots[b], 0);
-  while (rest > 0) {
-    let moved = false;
-    for (const b of ["C", "K", "S"]) if (rest > 0 && slots[b] < avail[b]) { slots[b]++; rest--; moved = true; }
-    if (!moved) break;                       // Katalog kleiner als target
-  }
-  while (rest < 0) {
-    let moved = false;
-    for (const b of ["S", "K", "C"]) if (rest < 0 && slots[b] > 0) { slots[b]--; rest++; moved = true; }
-    if (!moved) break;
-  }
-  // Innerhalb eines Blocks reihum über die Themen ziehen, damit nicht alle
-  // Codierungsfragen aus demselben Thema kommen.
+  const byTopic = {};
+  for (const q of QUESTIONS) (byTopic[q.topic] = byTopic[q.topic] || []).push(q);
+  const pools = shuffle(Object.keys(byTopic)).map(t => shuffle(byTopic[t]));
   const picked = [];
-  for (const b of BL) {
-    const pools = shuffle(Object.keys(byBlock[b])).map(t => shuffle(byBlock[b][t]));
-    let need = slots[b];
-    while (need > 0) {
-      let took = false;
-      for (const pool of pools) {
-        if (need <= 0) break;
-        if (pool.length) { picked.push(pool.pop()); need--; took = true; }
-      }
-      if (!took) break;
+  while (picked.length < target) {
+    let took = false;
+    for (const pool of pools) {
+      if (picked.length >= target) break;
+      if (pool.length) { picked.push(pool.pop()); took = true; }
     }
+    if (!took) break;
   }
-  return shuffle(picked).slice(0, target);
-}
-// Wie viele Fragen je Block sind in einer Fragenliste? (Auswertung/Anzeige)
-function examBlockCounts(qs) {
-  const c = { K: 0, C: 0, S: 0 };
-  for (const q of qs) c[examBlockOf(q)]++;
-  return c;
+  return shuffle(picked);
 }
 
 function examStart() {
@@ -2722,11 +2617,10 @@ function startExamTimer() {
   }, 1000);
 }
 
-// Fragetyp AUS SICHT DER PRÜFUNG. Die echte Prüfung sagt nicht, wie viele Antworten richtig
-// sind – und § 5 der Prüfungsordnung wertet alles-oder-nichts (nur vollständig richtig zählt).
-// Wer in der Simulation an den Radiobuttons ablesen kann „hier ist genau eine richtig", übt
-// eine Erleichterung ein, die es in der Prüfung nicht gibt. Deshalb verhalten sich single-
-// und multi-Fragen hier gleich: Mehrfachauswahl. Der Katalog bleibt unberührt, die Übung
+// Fragetyp AUS SICHT DER PRÜFUNG. Die Simulation verrät nicht, wie viele Antworten richtig
+// sind, und wertet alles-oder-nichts (nur vollständig richtig zählt). Wer an den Radiobuttons
+// ablesen kann „hier ist genau eine richtig", hätte eine Erleichterung. Deshalb verhalten
+// sich single- und multi-Fragen hier gleich: Mehrfachauswahl. Der Katalog bleibt unberührt, die Übung
 // (Lernmodus) zeigt weiterhin den echten Typ.
 function examPickType(q) { return (q.type === "numeric" || q.type === "code") ? q.type : "multi"; }
 
@@ -2749,7 +2643,7 @@ function examApplyPick(origIdx, buttons) {
   const ov = document.getElementById("examOverview");
   if (ov) { const answered = EXAM.picks.filter(p => p.length).length; ov.textContent = `Übersicht · ${answered}/${EXAM.qids.length} beantwortet`; }
 }
-// Kode-Antwort in der Prüfung: speichern OHNE Re-Render (Eingabefeld behält den Fokus).
+// Text-Antwort in der Prüfung: speichern OHNE Re-Render (Eingabefeld behält den Fokus).
 function examSetCode(raw) {
   const t = String(raw);
   EXAM.picks[EXAM.idx] = codeKey(t) ? [t] : [];
@@ -2813,17 +2707,17 @@ function renderExam() {
   } else if (isCode) {
     const val = EXAM.picks[i].length ? String(EXAM.picks[i][0]) : "";
     answerArea = `<div class="num-input code">
-      <input type="text" inputmode="text" id="examCode" autocomplete="off" autocapitalize="characters"
+      <input type="text" inputmode="text" id="examCode" autocomplete="off" autocapitalize="none"
         autocorrect="off" spellcheck="false" value="${esc(val)}"
-        placeholder="${esc(typeof q.placeholder === "string" && q.placeholder ? q.placeholder : "z. B. C50.4")}" aria-label="Kode eingeben">
+        placeholder="${esc(typeof q.placeholder === "string" && q.placeholder ? q.placeholder : "Antwort eintippen")}" aria-label="Antwort eingeben">
     </div>`;
   } else {
     answerArea = `<div class="options" role="group" aria-label="Antwortmöglichkeiten">${opts}</div>`;
   }
   const typeChip = numeric ? '<span class="chip">Rechenaufgabe</span>'
-    : (isCode ? '<span class="chip code">Kode eingeben</span>' : '<span class="chip multi">Mehrfachauswahl</span>');
+    : (isCode ? '<span class="chip code">Antwort eintippen</span>' : '<span class="chip multi">Mehrfachauswahl</span>');
   const hint = numeric ? '<p class="q-hint">Ergebnis als Zahl eingeben. Auswertung erst nach Abgabe.</p><p class="q-hint err" id="examNumHint" role="alert" style="display:none"></p>'
-    : (isCode ? '<p class="q-hint">Kode eintragen. Punkte und Groß-/Kleinschreibung sind egal. Auswertung erst nach Abgabe.</p>'
+    : (isCode ? '<p class="q-hint">Antwort eintippen. Groß-/Kleinschreibung und Satzzeichen sind egal. Auswertung erst nach Abgabe.</p>'
     : '<p class="q-hint">Es können eine oder mehrere Antworten richtig sein. Nur vollständig richtig zählt. Kein Zwischen-Feedback – Auswertung erst nach Abgabe.</p>');
 
   app.innerHTML = `
@@ -2938,16 +2832,6 @@ function renderExamResult() {
   const color = pct >= 75 ? "var(--success)" : pct >= 50 ? "var(--warn)" : "var(--danger)";
   const hero = pct >= 90 ? "🏆 Herausragend!" : pct >= 75 ? "🎉 Stark!" : pct >= 50 ? "👍 Bestanden!" : "💪 Weiter üben!";
 
-  // Prüfungsblöcke (Gewichtung der echten Prüfung: 40/50/10) – zeigt sofort,
-  // ob ausgerechnet Codierung schwächelt, der größte Block der echten Prüfung.
-  const bAgg = { K: { r: 0, n: 0 }, C: { r: 0, n: 0 }, S: { r: 0, n: 0 } };
-  for (const r of res.results) { const b = bAgg[examBlockOf(r.q)]; b.n++; if (r.ok) b.r++; }
-  const blockRows = ["K", "C", "S"].filter(b => bAgg[b].n).map(b => {
-    const a = bAgg[b], p = Math.round(a.r / a.n * 100);
-    const col = p >= 75 ? "var(--success)" : p >= 50 ? "var(--warn)" : "var(--danger)";
-    return `<div class="theme-row"><span class="tn">${EXAM_BLOCK_NAMES[b]}<br><span class="muted" style="font-size:12px">${EXAM_BLUEPRINT[b]} % der echten Prüfung</span></span><span class="tbar"><span style="width:${p}%;background:${col}"></span></span><span class="tp">${a.r}/${a.n}</span></div>`;
-  }).join("");
-
   // Themenprofil
   const agg = {};
   for (const r of res.results) { const a = (agg[r.q.topic] = agg[r.q.topic] || { r: 0, n: 0 }); a.n++; if (r.ok) a.r++; }
@@ -2989,10 +2873,6 @@ function renderExamResult() {
       <div class="pass-badge ${passed ? "pass" : "fail"}">${passed ? "BESTANDEN" : "NICHT BESTANDEN"} · Grenze 50 %</div>
       ${res.auto ? '<p class="muted center" style="margin-top:8px">Zeit abgelaufen – automatisch abgegeben.</p>' : ""}
     </div>
-    <div class="section-title">Prüfungsblöcke</div>
-    <div class="q-card">${blockRows}
-      <p class="muted" style="margin:10px 0 0;font-size:12.5px">Die Simulation zieht die Fragen in der Gewichtung der echten Prüfung
-      (Allgemein &amp; Klinik 40 % · Codierung 50 % · Statistik 10 %).</p></div>
     <div class="section-title">Themenprofil</div>
     <div class="q-card">${themeRows}</div>
     <div class="section-title">Auswertung im Detail</div>
@@ -3201,7 +3081,7 @@ function exportReports() {
     const blob = new Blob([reportsAsText()], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "adt-trainer-gemeldete-fragen-" + todayStr() + ".md";
+    a.href = url; a.download = "lern-trainer-gemeldete-fragen-" + todayStr() + ".md";
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
     toast("💾 Datei gespeichert");
@@ -3219,10 +3099,18 @@ function renderInfo() {
   updateAppbar("info");
   actionbar.classList.add("hidden");
   app.innerHTML = `
-    <h1 class="large-title">So funktioniert's<span class="sub">ADT Trainer · Kurzanleitung</span></h1>
+    <h1 class="large-title">So funktioniert's<span class="sub">Lern-Trainer · Kurzanleitung</span></h1>
 
     <div class="section-title">Die App</div>
-    <div class="q-card"><p style="margin:0;line-height:1.55">Diese App bereitet dich auf die ADT-Prüfung <b>„Tumordokumentar/in"</b> vor. Übe jederzeit am Handy – im echten Prüfungsformat, mit einer Erklärung zu jeder Frage. Alles funktioniert offline.</p></div>
+    <div class="q-card"><p style="margin:0;line-height:1.55">Mit dieser App lernst du <b>beliebige Inhalte</b> auswendig – Vokabeln, Fachbegriffe, Prüfungsstoff. Übe jederzeit am Handy, mit Erklärung zu jeder Frage. Alles funktioniert offline.</p></div>
+
+    <div class="section-title">Eigene Inhalte</div>
+    <div class="q-card"><p style="margin:0;line-height:1.6"><b>Einstellungen → Lerninhalte → Eigene Inhalte importieren.</b><br>
+    • Einfach: eine Textdatei (CSV) mit einer Zeile pro Karte: <code>Thema;Frage;Antwort</code><br>
+    • Optional: <code>Thema;Frage;Antwort;Erklärung;Falsch 1;Falsch 2;…</code><br>
+    • Ohne falsche Antworten baut die App Auswahl-Fragen aus den anderen Antworten desselben Themas.<br>
+    • Profis: JSON im App-Format (alle Fragetypen).<br>
+    Eine Vorlage lässt sich dort herunterladen.</p></div>
 
     <div class="section-title">Lernmodi</div>
     <div class="ios-group">
@@ -3232,11 +3120,10 @@ function renderInfo() {
       ${infoRow("clipboardCheck", "#34c759", "Prüfungssimulation", "30 Fragen · bestanden ab 50 %")}
     </div>
 
-    <div class="section-title">Prüfungsformat</div>
-    <div class="q-card"><p style="margin:0;line-height:1.6">• Multiple-Choice mit <b>mehreren</b> richtigen Antworten.<br>
+    <div class="section-title">Prüfungssimulation</div>
+    <div class="q-card"><p style="margin:0;line-height:1.6">• Bis zu 30 Fragen aus allen Themen, mit Timer.<br>
     • Ein Punkt nur, wenn <b>alle</b> richtigen Antworten getroffen sind (kein Teilpunkt).<br>
-    • Bestanden ab <b>50 %</b> der Punkte.<br>
-    • Zugelassene Hilfsmittel in der echten Prüfung: ICD-10, ICD-O-3, OPS.</p></div>
+    • Bestanden ab <b>50 %</b> der Punkte.</p></div>
 
     <div class="section-title">Cleveres Wiederholen</div>
     <div class="q-card"><p style="margin:0;line-height:1.6">Die App nutzt <b>Spaced Repetition</b> (Leitner-System): Jede Frage wandert bei richtiger Antwort in eine höhere Box mit längerer Pause (1 → 3 → 7 → 16 → 35 Tage). Bei einem Fehler geht sie zurück auf Anfang. So wiederholst du genau das, was du zu vergessen drohst – und nicht das, was längst sitzt.<br><br>
@@ -3276,13 +3163,8 @@ function renderInfo() {
       Dein Lernfortschritt wird <b>lokal auf diesem Gerät</b> gespeichert. Nur wenn du <b>Geräte-Sync</b>
       oder <b>Erinnerungen</b> aktivierst, wird zusätzlich in einem privaten Supabase-Projekt (EU) gespeichert:
       dein Fortschritt (über einen anonymen Sync-Code) bzw. der Benachrichtigungs-Kanal deines Geräts + die Uhrzeit.
-      <b>Keine Namen, keine Patientendaten, keine Werbung, keine Weitergabe an Dritte, keine Nutzungsanalyse.</b><br><br>
+      <b>Keine Namen, keine Werbung, keine Weitergabe an Dritte, keine Nutzungsanalyse.</b><br><br>
       Löschen jederzeit: „Fortschritt zurücksetzen" (lokal oder überall) und „Verbindung trennen" bzw. Erinnerung ausschalten.
-    </p></div>
-
-    <div class="q-card" style="border:1px solid var(--separator)"><p style="margin:0;line-height:1.55">
-      ⚠️ <b>Inoffiziell.</b> Diese App ist ein privates Übungswerkzeug und <b>kein Produkt der ADT e. V.</b>
-      Die Fragen dienen dem Üben und sind <b>nicht</b> die offiziellen ADT-Prüfungsfragen.
     </p></div>
 
     <p class="muted center" style="margin:22px 2px 0">App-Version ${APP_VERSION}${contentVersionLabel() ? " · Fragen-" + esc(contentVersionLabel()) : ""}</p>
@@ -3362,7 +3244,7 @@ async function onPopState(e) {
 function goBack() { history.back(); }
 
 /* ---- Tastatur-Komfort (Laptop): Zahlen 1–9 wählen Optionen, Enter prüft/weiter ----
- * Die echte Prüfung findet am Laptop statt – Tastaturbedienung ist darum relevant. */
+ * Am Laptop geht Lernen per Tastatur schneller. */
 function optionButtons() { return Array.from(app.querySelectorAll(".options .opt")); }
 function handleQuizKey(e) {
   const i = SESSION.idx;
@@ -3638,7 +3520,14 @@ function showContentGate(msg) {
       <button class="btn-primary" id="gateBtn" style="margin-top:12px">Freischalten</button>
       <p id="gateErr" style="color:var(--danger);margin:10px 0 0;min-height:1.2em">${msg ? esc(msg) : ""}</p>
     </div>
-    <p class="muted center" style="margin-top:16px;font-size:12px">Ohne gültigen Code werden keine Inhalte geladen. Zum Freischalten einmalig online sein.</p>`;
+    <p class="muted center" style="margin-top:16px;font-size:12px">Ohne gültigen Code werden keine Inhalte geladen. Zum Freischalten einmalig online sein.</p>
+    <button class="btn-ghost" id="gateImport" style="margin-top:8px;width:100%">Stattdessen eigene Inhalte importieren</button>
+    <input type="file" id="gateFile" accept=".csv,.tsv,.txt,.json,text/csv,text/plain,application/json" style="display:none">`;
+  const gi = document.getElementById("gateImport"), gf = document.getElementById("gateFile");
+  if (gi && gf) {
+    gi.addEventListener("click", () => gf.click());
+    gf.addEventListener("change", () => { if (gf.files && gf.files[0]) importContentFile(gf.files[0]); gf.value = ""; });
+  }
   const inp = document.getElementById("gateCode");
   const btn = document.getElementById("gateBtn");
   const err = document.getElementById("gateErr");
@@ -3647,7 +3536,7 @@ function showContentGate(msg) {
     if (!code) return;
     btn.disabled = true; err.style.color = "var(--text-dim)"; err.textContent = "Prüfe…";
     if (!navigator.onLine) { err.style.color = "var(--danger)"; err.textContent = "Zum Freischalten einmalig online sein."; btn.disabled = false; return; }
-    const content = window.ADTSync ? await ADTSync.getContent(code) : null;
+    const content = window.LernSync ? await LernSync.getContent(code) : null;
     if (!content) {
       err.style.color = "var(--danger)";
       err.textContent = "Code ungültig oder Inhalte nicht erreichbar.";
@@ -3677,8 +3566,8 @@ function showOnboarding() {
     const goals = GOAL_CHOICES.map(n => `<button class="goal-chip${n === 10 ? " sel" : ""}" data-goal="${n}">${n}</button>`).join("");
     ov.innerHTML = `<div class="modal-card onboard-card">
       <div class="onboard-hero">${iconTile("clipboardCheck", "#34c759")}</div>
-      <h3 class="modal-title">Willkommen beim ADT&nbsp;Trainer</h3>
-      <p class="modal-msg">Übe jederzeit für die Prüfung „Tumordokumentar/in" – im echten Prüfungsformat, mit Erklärung zu jeder Frage. Alles funktioniert offline.</p>
+      <h3 class="modal-title">Willkommen beim Lern-Trainer</h3>
+      <p class="modal-msg">Lerne beliebige Inhalte auswendig – mit Wiederholung im richtigen Moment. Starte mit den Beispiel-Fragen oder importiere eigene Inhalte unter <b>Einstellungen → Lerninhalte</b>. Alles funktioniert offline.</p>
       <div class="onboard-goal">
         <label>Dein Tagesziel (Fragen pro Tag):</label>
         <div class="goal-chips">${goals}</div>
@@ -3711,8 +3600,8 @@ async function deleteCloudData() {
     [{ label: "Cloud-Daten löschen", value: true, variant: "danger" }, { label: "Abbrechen", value: false, variant: "ghost" }]
   );
   if (!ok) return;
-  const r = await ADTSync.overwriteRemote(freshState());   // Cloud-Zeile leeren
-  if (r && r.ok) { ADTSync.setCode(null); toast("☁️ Cloud-Daten gelöscht · getrennt"); }
+  const r = await LernSync.overwriteRemote(freshState());   // Cloud-Zeile leeren
+  if (r && r.ok) { LernSync.setCode(null); toast("☁️ Cloud-Daten gelöscht · getrennt"); }
   else if (r && r.reason === "offline") { toast("🔌 Offline – bitte später erneut versuchen"); }
   else { toast("⚠️ Löschen fehlgeschlagen"); }
   renderSettings();
@@ -3733,8 +3622,185 @@ async function relockContent() {
     localStorage.removeItem(CONTENT_CODE_KEY);
     localStorage.removeItem(CONTENT_IDB_FLAG);
     localStorage.removeItem(CONTENT_FP_KEY);
+    localStorage.removeItem(CUSTOM_CONTENT_KEY);
   } catch (e) {}
   await idbDelete();
+  location.reload();
+}
+
+/* ------------------------------------------------------------------ *
+ * Eigene Lerninhalte importieren (CSV/Text oder JSON)
+ * ------------------------------------------------------------------
+ * Einfaches Format, eine Karte pro Zeile (Trenner ; oder Tab, auch ,):
+ *   Thema;Frage;Antwort[;Erklärung[;Falsch 1;Falsch 2;…]]
+ *   Frage;Antwort                       (2 Spalten → Thema „Allgemein")
+ * Ohne falsche Antworten werden Auswahl-Fragen aus den Antworten anderer Karten
+ * desselben Themas gebaut; gibt es keine, wird die Karte zur Eingabe-Aufgabe.
+ * JSON: { TOPICS: {...}, QUESTIONS: [...] } im App-Format oder nur das Fragen-Array.
+ * IDs entstehen aus Thema+Frage – ein erneuter Import behält den Lernfortschritt. */
+const CUSTOM_CONTENT_KEY = "lern_content_custom";   // "1" = eigene Inhalte aktiv
+const TOPIC_COLORS = ["#5b8def", "#e8734a", "#7c5cbf", "#3fa796", "#d9a441", "#c0577a", "#4a90a4", "#6aa84f", "#8a8f99"];
+const TOPIC_ICONS = ["📘", "📗", "📙", "📕", "🧠", "💡", "🗂️", "📝", "🎯"];
+function customContentActive() { try { return localStorage.getItem(CUSTOM_CONTENT_KEY) === "1"; } catch { return false; } }
+
+function hash36(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h.toString(36);
+}
+function topicKeyOf(name) {
+  const base = String(name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
+  return (base || "thema") + "-" + hash36(String(name)).slice(0, 4);
+}
+// Eine CSV-Zeile zerlegen (Anführungszeichen mit "" als Escape werden unterstützt).
+function splitCsvLine(line, sep) {
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) {
+      if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"' && cur.trim() === "") { q = true; cur = ""; }
+    else if (c === sep) { out.push(cur.trim()); cur = ""; }
+    else cur += c;
+  }
+  out.push(cur.trim());
+  return out;
+}
+function parseCsvContent(text) {
+  const lines = String(text).replace(/^﻿/, "").split(/\r?\n/).filter(l => l.trim() && !/^\s*#/.test(l));
+  if (!lines.length) throw new Error("Die Datei ist leer.");
+  const sample = lines.slice(0, 5).join("\n");
+  const sep = sample.includes("\t") ? "\t" : sample.includes(";") ? ";" : ",";
+  let rows = lines.map(l => splitCsvLine(l, sep));
+  if (/^(thema|topic|kategorie|frage|question)$/i.test(rows[0][0] || "")) rows = rows.slice(1);   // Kopfzeile
+  const cards = []; let skipped = 0;
+  for (const r of rows) {
+    while (r.length && !r[r.length - 1]) r.pop();
+    if (r.length === 2 && r[0] && r[1]) { cards.push({ topic: "Allgemein", q: r[0], a: r[1], exp: "", wrong: [] }); continue; }
+    if (r.length < 3 || !r[1] || !r[2]) { skipped++; continue; }
+    cards.push({ topic: r[0] || "Allgemein", q: r[1], a: r[2], exp: r[3] || "", wrong: r.slice(4).filter(Boolean) });
+  }
+  if (!cards.length) throw new Error("Keine gültigen Zeilen gefunden. Format: Thema;Frage;Antwort");
+  const TOPICS_NEW = {}, QUESTIONS_NEW = [], ids = new Set();
+  const byTopic = {};
+  for (const c of cards) (byTopic[c.topic] = byTopic[c.topic] || []).push(c.a);
+  const allAnswers = cards.map(c => c.a);
+  let ti = 0;
+  for (const c of cards) {
+    const key = topicKeyOf(c.topic);
+    if (!TOPICS_NEW[key]) { TOPICS_NEW[key] = { name: c.topic, icon: TOPIC_ICONS[ti % TOPIC_ICONS.length], color: TOPIC_COLORS[ti % TOPIC_COLORS.length] }; ti++; }
+    let id = "u-" + hash36(c.topic + "\u0001" + c.q), n = 2;
+    while (ids.has(id)) id = "u-" + hash36(c.topic + "\u0001" + c.q) + "-" + (n++);
+    ids.add(id);
+    const same = (x) => codeKey(x) === codeKey(c.a);
+    let wrong = c.wrong.filter(w => !same(w));
+    if (!wrong.length) {
+      // Ablenker aus demselben Thema, notfalls aus dem ganzen Katalog
+      const pool = shuffle(Array.from(new Set(byTopic[c.topic].filter(x => !same(x)))));
+      if (pool.length < 3) for (const x of shuffle(Array.from(new Set(allAnswers)))) if (!same(x) && !pool.includes(x)) pool.push(x);
+      wrong = pool.slice(0, 3);
+    }
+    const explanation = c.exp || ("Richtige Antwort: " + c.a);
+    if (!wrong.length) {
+      QUESTIONS_NEW.push({ id, topic: key, difficulty: 1, type: "code", question: c.q, answer: c.a, explanation });
+    } else {
+      const options = shuffle([c.a].concat(wrong.slice(0, 7)));
+      QUESTIONS_NEW.push({ id, topic: key, difficulty: 1, type: "single", question: c.q, options, correct: [options.indexOf(c.a)], explanation });
+    }
+  }
+  return { TOPICS: TOPICS_NEW, QUESTIONS: QUESTIONS_NEW, skipped };
+}
+function parseJsonContent(text) {
+  let d;
+  try { d = JSON.parse(text); } catch (e) { throw new Error("Die JSON-Datei ist nicht lesbar."); }
+  const qs = Array.isArray(d) ? d : (d && (d.QUESTIONS || d.questions));
+  if (!Array.isArray(qs) || !qs.length) throw new Error("Keine Fragen (QUESTIONS) in der JSON-Datei gefunden.");
+  const T = Object.assign({}, (d && (d.TOPICS || d.topics)) || {});
+  let ti = Object.keys(T).length;
+  for (const q of qs) {
+    if (!q || typeof q !== "object") continue;
+    if (!q.topic) q.topic = "allgemein";
+    if (!T[q.topic]) { T[q.topic] = { name: String(q.topic), icon: TOPIC_ICONS[ti % TOPIC_ICONS.length], color: TOPIC_COLORS[ti % TOPIC_COLORS.length] }; ti++; }
+    if (!q.id) q.id = "u-" + hash36(q.topic + "\u0001" + (q.question || ""));
+    if (!q.type) q.type = (Array.isArray(q.correct) && q.correct.length > 1) ? "multi" : (Array.isArray(q.options) ? "single" : "code");
+    if (q.explanation == null) q.explanation = "";
+  }
+  for (const k of Object.keys(T)) { const t = T[k] || {}; T[k] = { name: String(t.name || k), icon: t.icon || "📘", color: t.color || "#5b8def" }; }
+  const ids = new Set(), ok = [];
+  const prevTopics = window.TOPICS;
+  window.TOPICS = T;                 // questionValid() prüft gegen die globalen Themen
+  try { for (const q of qs) if (questionValid(q, ids)) { ids.add(q.id); ok.push(q); } }
+  finally { window.TOPICS = prevTopics; }
+  if (!ok.length) throw new Error("Keine der Fragen hat ein gültiges Format.");
+  const used = new Set(ok.map(q => q.topic)), TOPICS_NEW = {};
+  for (const k of used) TOPICS_NEW[k] = T[k];
+  return { TOPICS: TOPICS_NEW, QUESTIONS: ok, skipped: qs.length - ok.length };
+}
+function parseContentText(text, filename) {
+  const t = String(text || "").trim();
+  if (/\.json$/i.test(filename || "") || /^[\[{]/.test(t)) return parseJsonContent(t);
+  return parseCsvContent(t);
+}
+
+async function importContentFile(file) {
+  let parsed;
+  try {
+    if (file.size > 20 * 1024 * 1024) throw new Error("Die Datei ist zu groß (max. 20 MB).");
+    parsed = parseContentText(await file.text(), file.name);
+  } catch (e) {
+    await modalChoice("Import nicht möglich", (e && e.message) || "Die Datei konnte nicht gelesen werden.", [{ label: "OK", value: true }]);
+    return;
+  }
+  const nT = Object.keys(parsed.TOPICS).length;
+  const ok = await modalChoice("Inhalte importieren",
+    `${parsed.QUESTIONS.length} Fragen in ${nT} Thema${nT === 1 ? "" : "en"} gefunden` +
+    (parsed.skipped ? ` (${parsed.skipped} Zeile${parsed.skipped === 1 ? "" : "n"} übersprungen)` : "") +
+    ". Die aktuellen Fragen werden ersetzt. Dein Fortschritt bleibt gespeichert.",
+    [{ label: "Importieren", value: true, variant: "primary" }, { label: "Abbrechen", value: false, variant: "ghost" }]);
+  if (!ok) return;
+  const content = { TOPICS: parsed.TOPICS, QUESTIONS: parsed.QUESTIONS, VERSION: todayStr() };
+  const res = await storeUnlockedContent(content, null);
+  if (res !== "ok") { toast(res === "quota" ? "⚠️ Speicher voll – Import nicht möglich" : "⚠️ Speichern fehlgeschlagen"); return; }
+  try {
+    localStorage.setItem(CUSTOM_CONTENT_KEY, "1");
+    localStorage.removeItem(CONTENT_CODE_KEY);      // keine Hintergrund-Aktualisierung mehr, die den Import überschreibt
+    localStorage.setItem(CONTENT_FP_KEY, contentFingerprint(content));
+  } catch (e) {}
+  flushSave();
+  location.reload();
+}
+
+function downloadContentTemplate() {
+  const csv = "﻿" + [
+    "Thema;Frage;Antwort;Erklärung;Falsch 1;Falsch 2;Falsch 3",
+    "Englisch;der Hund;dog;;;;",
+    "Englisch;die Katze;cat;;;;",
+    "Englisch;das Haus;house;;;;",
+    "Hauptstädte;Hauptstadt von Frankreich?;Paris;Paris liegt an der Seine.;Lyon;Marseille;Nizza",
+    "Hauptstädte;Hauptstadt von Italien?;Rom;;Mailand;Neapel;Turin",
+  ].join("\r\n") + "\r\n";
+  try {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "lern-trainer-vorlage.csv";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    toast("📄 Vorlage gespeichert");
+  } catch (e) { toast("⚠️ Download nicht möglich"); }
+}
+
+async function restoreSampleContent() {
+  const ok = await modalChoice("Beispiel-Inhalte wiederherstellen",
+    "Die eigenen Inhalte werden von diesem Gerät entfernt. Dein Fortschritt bleibt gespeichert und kommt zurück, wenn du sie erneut importierst.",
+    [{ label: "Wiederherstellen", value: true, variant: "danger" }, { label: "Abbrechen", value: false, variant: "ghost" }]);
+  if (!ok) return;
+  try {
+    for (const k of [CONTENT_KEY, CONTENT_CODE_KEY, CONTENT_IDB_FLAG, CONTENT_FP_KEY, CUSTOM_CONTENT_KEY]) localStorage.removeItem(k);
+  } catch (e) {}
+  await idbDelete();
+  flushSave();
   location.reload();
 }
 
@@ -3762,11 +3828,11 @@ async function confirmReset() {
     if (!choice) return;
     if (choice === "all") {
       S = freshStateKeepingReports(); persistLocal();
-      const r = await ADTSync.overwriteRemote(S);
+      const r = await LernSync.overwriteRemote(S);
       toast(r && r.ok ? "Überall zurückgesetzt" : "Lokal zurückgesetzt – Cloud folgt bei Verbindung");
     } else {
       // Verbindung trennen, damit der lokale Reset nicht aus der Cloud zurückkehrt
-      ADTSync.setCode(null);
+      LernSync.setCode(null);
       S = freshStateKeepingReports(); persistLocal();
       toast("Zurückgesetzt · Cloud-Verbindung getrennt");
     }
@@ -3784,13 +3850,13 @@ async function confirmReset() {
 /* ---- Lokales Backup: Export / Import (unabhängig von der Cloud) ---- */
 function exportProgress() {
   try {
-    const payload = { app: "adt-trainer", schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), state: S };
+    const payload = { app: "lern-trainer", schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), state: S };
     const json = JSON.stringify(payload, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const stamp = todayStr();
-    a.href = url; a.download = "adt-trainer-backup-" + stamp + ".json";
+    a.href = url; a.download = "lern-trainer-backup-" + stamp + ".json";
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
     toast("💾 Backup gespeichert");
@@ -3809,7 +3875,7 @@ function importProgressFile(file) {
       if (!incoming || typeof incoming !== "object") throw new Error("Ungültige Datei");
       const cleanIncoming = sanitizeState(migrate(incoming));
       // Verlustarm zusammenführen (nie schlechter als vorher)
-      const merged = window.ADTSync ? ADTSync.mergeStates(S, cleanIncoming) : cleanIncoming;
+      const merged = window.LernSync ? LernSync.mergeStates(S, cleanIncoming) : cleanIncoming;
       S = sanitizeState(migrate(merged));
       persistLocal();
       checkBadges();
@@ -3914,8 +3980,8 @@ if (contentGateActive() && !contentUnlocked()) {
   if (DATA_SKIPPED) setTimeout(() => toast(`${DATA_SKIPPED} fehlerhafte Frage(n) übersprungen`), 1400);
 
   // Cloud-Sync: Statusanzeige aktualisieren + bei passenden Ereignissen abgleichen
-  if (window.ADTSync) {
-    ADTSync.onChange(() => { updateSyncChip(); refreshAfterSync(); });
+  if (window.LernSync) {
+    LernSync.onChange(() => { updateSyncChip(); refreshAfterSync(); });
     if (syncEnabled()) runSync({});                              // beim Start
     window.addEventListener("online", () => { if (syncEnabled()) runSync({}); });
     document.addEventListener("visibilitychange", () => { if (!document.hidden && syncEnabled()) runSync({}); });

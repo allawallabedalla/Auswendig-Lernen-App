@@ -38,10 +38,16 @@ async function page(opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', acceptDownloads: true });
   const p = await ctx.newPage();
   // Onboarding-Overlay standardmäßig überspringen, damit es die übrigen Tests nicht blockiert.
-  if (opts.onboarded !== false) await p.addInitScript(() => localStorage.setItem('adt_onboarded', '1'));
+  if (opts.onboarded !== false) await p.addInitScript(() => localStorage.setItem('lern_onboarded', '1'));
   // Zugangsschutz standardmäßig neutralisieren (Beispielkatalog als „freigeschaltet"),
   // sonst hinge jeder Test am Freischalt-Bildschirm. Mit { seeded: false } bleibt er scharf.
   if (opts.seeded !== false) await seedContent(p);
+  // Konfiguration für Tests überschreiben: Zielrepo für die Issue-Funktion setzen
+  // (Standard in config.js: leer) und den Zugangsschutz gezielt einschalten ({ gated: true }).
+  const over = Object.assign({ feedbackRepo: 'beispiel/lerninhalte' }, opts.gated ? { contentGated: true } : {});
+  await p.addInitScript((over) => {
+    let c; Object.defineProperty(window, 'APP_CONFIG', { configurable: true, get: () => c, set: (v) => { c = Object.assign(v || {}, over); } });
+  }, over);
   // Reine Netzwerk-Status-Meldungen des Browsers (z. B. bewusst getestete 400/404-Antworten)
   // sind KEINE App-Fehler – nur echte JS-Fehler zählen.
   p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/i.test(m.text())) errors.push('CONSOLE: ' + m.text()); });
@@ -60,7 +66,7 @@ async function page(opts = {}) {
 // 2) Kaputter Speicherstand wird saniert, App startet
 {
   const p = await page();
-  await p.addInitScript(() => localStorage.setItem('adt_trainer_state_v1', JSON.stringify({ xp: '50', totalAnswered: -3, perQuestion: { q: { seen: NaN } } })));
+  await p.addInitScript(() => localStorage.setItem('lern_state_v1', JSON.stringify({ xp: '50', totalAnswered: -3, perQuestion: { q: { seen: NaN } } })));
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForSelector('.level-card');
   chk((await p.textContent('.stat-grid .stat:nth-child(3) .num')).trim() === '50', 'Sanitisierung: xp "50" -> 50');
@@ -86,19 +92,19 @@ async function page(opts = {}) {
   await p.waitForSelector('.modal-overlay .modal-btn.btn-danger');
   await p.click('.modal-overlay .modal-btn.btn-danger');
   await p.waitForTimeout(300);
-  const st = await p.evaluate(() => JSON.parse(localStorage.getItem('adt_trainer_state_v1')));
+  const st = await p.evaluate(() => JSON.parse(localStorage.getItem('lern_state_v1')));
   chk(st.totalAnswered === 0 && Object.keys(st.perQuestion).length === 0, 'Reset leert Zähler UND perQuestion');
 }
 
 // 4) Backup-Import wird verlustarm gemergt
 {
   const p = await page();
-  const f = TMP + '/adt-import-test.json';
-  fs.writeFileSync(f, JSON.stringify({ app: 'adt-trainer', state: { xp: 999, perQuestion: { 'tnm-001': { seen: 5, correct: 5, wrong: 0, lastResult: 'correct' } }, badges: { first: '2020-01-01T00:00:00Z' } } }));
+  const f = TMP + '/lern-import-test.json';
+  fs.writeFileSync(f, JSON.stringify({ app: 'lern-trainer', state: { xp: 999, perQuestion: { 'geo-001': { seen: 5, correct: 5, wrong: 0, lastResult: 'correct' } }, badges: { first: '2020-01-01T00:00:00Z' } } }));
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.click('[data-act="settings"]'); await p.waitForSelector('#importFile', { state: 'attached' });
   await p.setInputFiles('#importFile', f); await p.waitForTimeout(500);
-  const st = await p.evaluate(() => JSON.parse(localStorage.getItem('adt_trainer_state_v1')));
+  const st = await p.evaluate(() => JSON.parse(localStorage.getItem('lern_state_v1')));
   chk(st.xp === 999 && st.totalAnswered === 5, 'Backup-Import: xp=999, Zähler abgeleitet');
 }
 
@@ -110,7 +116,7 @@ async function page(opts = {}) {
   await p.goto(BASE, { waitUntil: 'networkidle' }); await p.click('[data-act="badges"]'); await p.waitForSelector('.badge-grid'); chk(true, 'Erfolge rendern');
   await p.goto(BASE, { waitUntil: 'networkidle' }); await p.click('[data-act="info"]'); await p.waitForSelector('.large-title');
   const infoTxt = await p.textContent('#app');
-  chk(/Datenschutz/.test(infoTxt) && /Inoffiziell/.test(infoTxt) && /kein Produkt der ADT/.test(infoTxt), 'Info: Datenschutz + Inoffiziell-Disclaimer vorhanden');
+  chk(/Datenschutz/.test(infoTxt) && /Eigene Inhalte/.test(infoTxt) && !/Inoffiziell/.test(infoTxt), 'Info: Datenschutz + Import-Anleitung vorhanden');
 }
 
 // 6) Verpasste richtige Antwort zeigt „Richtige Antwort"-Hinweis (Quick-Win-Regression)
@@ -154,8 +160,8 @@ async function page(opts = {}) {
   const review = await p.$('.review-item');
   chk(!!profile && !!review, 'Prüfung: Abgabe → Ergebnis mit Themenprofil & Review');
   const bodyTxt = await p.textContent('body');
-  chk(/Prüfungsblöcke/.test(bodyTxt) && /Codierung/.test(bodyTxt),
-      'Prüfung: Ergebnis zeigt die Prüfungsblöcke (40/50/10)');
+  chk(/Themenprofil/.test(bodyTxt) && !/Prüfungsblöcke/.test(bodyTxt),
+      'Prüfung: Ergebnis zeigt das Themenprofil');
 }
 
 // 6c) Beobachtungsdaten (Stufe 1 des Bereitschafts-Konzepts): Erfassung + Migration
@@ -195,7 +201,7 @@ async function page(opts = {}) {
 {
   const p = await page();
   await p.addInitScript(() => {
-    localStorage.setItem('adt_trainer_state_v1', JSON.stringify({
+    localStorage.setItem('lern_state_v1', JSON.stringify({
       schemaVersion: 3,
       perQuestion: {
         // ECHTE Katalog-IDs noetig: sanitizeState parkt unbekannte IDs als orphanQuestions.
@@ -263,7 +269,7 @@ async function page(opts = {}) {
 {
   const p = await page();
   await p.addInitScript(() => {
-    localStorage.setItem('adt_trainer_state_v1', JSON.stringify({
+    localStorage.setItem('lern_state_v1', JSON.stringify({
       schemaVersion: 4,
       perQuestion: {
         'gr-001': { seen: 1, correct: 1, wrong: 0, lastResult: 'correct', box: 1, due: '2026-08-20', first: 'correct', lastAt: '2026-08-10' },
@@ -290,42 +296,35 @@ async function page(opts = {}) {
 {
   const p = await page();
   await p.goto(BASE, { waitUntil: 'networkidle' });
-  const O = (K, C, S) => ({ K: { n: K[0], x: K[1] }, C: { n: C[0], x: C[1] }, S: { n: S[0], x: S[1] } });
+  const O = (K) => ({ n: K[0], x: K[1] });
   const rechne = (obs) => p.evaluate((obs) => passProbability(obs), obs);
 
-  const zuWenig = await rechne(O([10, 10], [0, 0], [0, 0]));
+  const zuWenig = await rechne(O([10, 10]));
   chk(zuWenig.genug === false && zuWenig.fehlt === 20, 'Prognose: unter 30 Beobachtungen keine Zahl');
 
-  const r1 = await rechne(O([50, 30], [0, 0], [0, 0]));
+  const r1 = await rechne(O([50, 30]));
   chk(r1.genug === true && Math.abs(r1.p * 100 - 83.3) < 1.5, 'Prognose: 60 % auf 50 Fragen -> ~83 % (Referenz)');
-  const r2 = await rechne(O([100, 70], [0, 0], [0, 0]));
+  const r2 = await rechne(O([100, 70]));
   chk(Math.abs(r2.p * 100 - 99) < 1.5, 'Prognose: 70 % auf 100 Fragen -> ~99 % (Referenz)');
-  const r3 = await rechne(O([100, 55], [0, 0], [0, 0]));
+  const r3 = await rechne(O([100, 55]));
   chk(Math.abs(r3.p * 100 - 73.9) < 2, 'Prognose: 55 % auf 100 Fragen -> ~74 % (Referenz)');
-  const r4 = await rechne(O([200, 120], [0, 0], [0, 0]));
+  const r4 = await rechne(O([200, 120]));
   chk(Math.abs(r4.p * 100 - 91.6) < 2, 'Prognose: 60 % auf 200 Fragen -> ~92 % (Referenz)');
 
-  // Codierung ist 50 % der Pruefung, Klinik 40 % -> die Codier-Quote muss staerker wiegen
-  const klinikStark = await rechne(O([100, 70], [100, 40], [0, 0]));
-  const codeStark   = await rechne(O([100, 40], [100, 70], [0, 0]));
-  chk(codeStark.p > klinikStark.p + 0.05, 'Prognose: Codierung wiegt schwerer als Klinik (Blueprint 50/40)');
-
-  // fehlende Bloecke werden ausgewiesen, nicht stillschweigend als 0 gewertet
-  chk(Array.isArray(codeStark.ohneDaten) && codeStark.ohneDaten.includes('S'), 'Prognose: Block ohne Daten wird ausgewiesen');
-  chk(codeStark.p > 0 && codeStark.p < 1, 'Prognose: nie exakt 0 oder 1');
+  chk(r1.p > 0 && r1.p < 1, 'Prognose: nie exakt 0 oder 1');
 
   // monoton in der Trefferquote und in der Datenmenge
-  const a = await rechne(O([100, 60], [0, 0], [0, 0]));
-  const b = await rechne(O([100, 80], [0, 0], [0, 0]));
+  const a = await rechne(O([100, 60]));
+  const b = await rechne(O([100, 80]));
   chk(b.p > a.p, 'Prognose: hoehere Trefferquote -> hoehere Wahrscheinlichkeit');
-  const eng1 = await rechne(O([60, 39], [0, 0], [0, 0]));
-  const eng2 = await rechne(O([200, 130], [0, 0], [0, 0]));
+  const eng1 = await rechne(O([60, 39]));
+  const eng2 = await rechne(O([200, 130]));
   chk(eng2.p > eng1.p, 'Prognose: gleiche Quote, mehr Daten -> sicherer');
 
   // Katastrophenfall bleibt niedrig, Traumfall erreicht nie 100 %
-  const mies = await rechne(O([100, 20], [0, 0], [0, 0]));
+  const mies = await rechne(O([100, 20]));
   chk(mies.p < 0.05, 'Prognose: 20 % richtig -> klar unter der Bestehensgrenze');
-  const top = await rechne(O([300, 300], [0, 0], [0, 0]));
+  const top = await rechne(O([300, 300]));
   chk(top.p < 1 && top.p > 0.99, 'Prognose: alles richtig -> sehr hoch, aber nie 100 %');
   const txt = await p.evaluate(() => passPctText(0.9997));
   chk(!/100/.test(txt), 'Prognose: Anzeige nennt nie 100 % (' + txt + ')');
@@ -346,11 +345,13 @@ async function page(opts = {}) {
   chk(await g(Q, 'C50,4'), 'Code: Komma statt Punkt richtig');
   chk(!(await g(Q, 'C50.5')), 'Code: falsche Endziffer ist falsch');
   // Dokumentierte Grosszuegigkeit: Trennzeichen werden ignoriert, "C5.04" ist dieselbe
-  // Ziffernfolge wie "C50.4". Bewusst in Kauf genommen – kein realer ICD-Kode kollidiert.
+  // Ziffernfolge wie "C50.4". Bewusst in Kauf genommen – Tippgenauigkeit zählt nicht.
   chk(await g(Q, 'C5.04'), 'Code: Trennzeichen werden vollstaendig ignoriert');
   chk(!(await g(Q, '')), 'Code: leere Eingabe ist keine Antwort');
   chk(!(await g(Q, '   ')), 'Code: nur Leerzeichen ist keine Antwort');
   chk(!(await g(Q, '.-/')), 'Code: nur Trennzeichen ist keine Antwort');
+  chk(await g({ type: 'code', answer: 'Brücke' }, 'brücke!'), 'Code: Umlaute zählen, Satzzeichen nicht');
+  chk(!(await g({ type: 'code', answer: 'Brücke' }, 'Brucke')), 'Code: fehlender Umlaut ist falsch');
 
   const M = { type: 'code', answer: '8500/3' };
   chk(await g(M, '8500/3'), 'Code: Morphologie mit Schraegstrich');
@@ -384,7 +385,7 @@ async function page(opts = {}) {
   await p.waitForSelector('#codeField');
   chk((await p.$('.options')) === null, 'Code: keine Antwortoptionen sichtbar');
   const chipTxt = await p.textContent('.chip.code');
-  chk(/Kode/.test(chipTxt || ''), 'Code: Aufgabentyp wird als Chip benannt');
+  chk(/Antwort eintippen/.test(chipTxt || ''), 'Code: Aufgabentyp wird als Chip benannt');
   chk(await p.isDisabled('#checkBtn'), 'Code: Pruefen ist ohne Eingabe gesperrt');
 
   await p.fill('#codeField', '  ');
@@ -411,25 +412,6 @@ async function page(opts = {}) {
     return examPickType(q);
   });
   chk(imExamen === 'code', 'Code: Pruefungsmodus kennt den Typ (kein Rueckfall auf multi)');
-}
-
-// 6i) Blockzuordnung: eine Kodier-Aufgabe zaehlt immer als Codierung
-{
-  const p = await page();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
-  const r = await p.evaluate(() => ({
-    // klinisches Thema, aber Aufgabentyp code -> Codierung
-    codeInKlinik: examBlockOf({ type: 'code', topic: 'syserkr_lymphome' }),
-    mcInKlinik:   examBlockOf({ type: 'single', topic: 'syserkr_lymphome' }),
-    codeInStat:   examBlockOf({ type: 'code', topic: 'deskstat_haeufigkeit_grafik' }),
-    mcInStat:     examBlockOf({ type: 'single', topic: 'deskstat_haeufigkeit_grafik' }),
-    alsString:    examBlockOf('deskstat_haeufigkeit_grafik'),
-  }));
-  chk(r.codeInKlinik === 'C', 'Block: Kodier-Aufgabe im klinischen Thema zaehlt als Codierung');
-  chk(r.mcInKlinik === 'K', 'Block: Auswahlfrage im klinischen Thema bleibt Klinik');
-  chk(r.codeInStat === 'C', 'Block: Kodier-Aufgabe schlaegt auch die Statistik-Zuordnung');
-  chk(r.mcInStat === 'S', 'Block: Statistik-Thema bleibt sonst Statistik');
-  chk(r.alsString === 'S', 'Block: Themenschluessel als String wird weiterhin akzeptiert');
 }
 
 // 6j) Übungsmodus „Kodes eintragen": eigener Einstieg, nur Kodier-Aufgaben
@@ -501,51 +483,86 @@ async function page(opts = {}) {
   chk(r.n === 2, `Schwachstellen: genau die zwei erwarteten (statt ${r.katalog - 1})`);
 }
 
-// 7b) Prüfungs-Blueprint: Ziehung folgt der echten Gewichtung 40/50/10
-// (vorher zog die Simulation faktisch 1 Frage je Thema und untergewichtete
-// damit Codierung – den größten Block der echten Prüfung).
-{
-  const p = await page();
-  await p.goto(BASE, { waitUntil: 'networkidle' });
-  const r = await p.evaluate(() => {
-    // Katalog mit bekannter Blockverteilung unterschieben
-    const mk = (t, n, o) => Array.from({ length: n }, (_, i) =>
-      ({ id: t + i, topic: t, type: 'single', question: 'x', options: ['a', 'b'], correct: [0] }));
-    window.QUESTIONS = [
-      ...mk('brust_therapie', 200), ...mk('gyn_zervix', 200),          // K
-      ...mk('tnm_grundlagen', 200), ...mk('icdo_icd_kodierung', 200),  // C
-      ...mk('deskstat_grundlagen_lagemasse', 100),                     // S
-    ];
-    const runs = 50, agg = { K: 0, C: 0, S: 0 };
-    let sizeOk = true, dupOk = true;
-    for (let i = 0; i < runs; i++) {
-      const qs = buildExamQuestions();
-      if (qs.length !== 30) sizeOk = false;
-      if (new Set(qs.map(q => q.id)).size !== qs.length) dupOk = false;
-      const c = examBlockCounts(qs);
-      agg.K += c.K; agg.C += c.C; agg.S += c.S;
-    }
-    return { K: agg.K / runs, C: agg.C / runs, S: agg.S / runs, sizeOk, dupOk };
-  });
-  chk(r.sizeOk, 'Blueprint: jede Simulation hat genau 30 Fragen');
-  chk(r.dupOk, 'Blueprint: keine Frage doppelt in einer Simulation');
-  chk(Math.abs(r.K - 12) < 0.6, `Blueprint: Allgemein & Klinik ~12/30 (ist ${r.K})`);
-  chk(Math.abs(r.C - 15) < 0.6, `Blueprint: Codierung ~15/30 (ist ${r.C})`);
-  chk(Math.abs(r.S - 3) < 0.6, `Blueprint: Statistik ~3/30 (ist ${r.S})`);
-}
-
-// 7c) Blueprint-Randfall: fehlt ein Block, werden seine Plätze umverteilt
+// 7b) Prüfungs-Zusammenstellung: 30 Fragen, keine Dubletten, alle Themen vertreten
 {
   const p = await page();
   await p.goto(BASE, { waitUntil: 'networkidle' });
   const r = await p.evaluate(() => {
     const mk = (t, n) => Array.from({ length: n }, (_, i) =>
       ({ id: t + i, topic: t, type: 'single', question: 'x', options: ['a', 'b'], correct: [0] }));
-    window.QUESTIONS = [...mk('brust_therapie', 60), ...mk('tnm_grundlagen', 60)]; // keine Statistik
-    const qs = buildExamQuestions();
-    return { n: qs.length, s: examBlockCounts(qs).S };
+    window.QUESTIONS = [...mk('a', 200), ...mk('b', 200), ...mk('c', 3)];
+    let sizeOk = true, dupOk = true, allTopics = true;
+    for (let i = 0; i < 30; i++) {
+      const qs = buildExamQuestions();
+      if (qs.length !== 30) sizeOk = false;
+      if (new Set(qs.map(q => q.id)).size !== qs.length) dupOk = false;
+      const t = qs.reduce((m, q) => (m[q.topic] = (m[q.topic] || 0) + 1, m), {});
+      if (t.c !== 3 || !t.a || !t.b) allTopics = false;
+    }
+    window.QUESTIONS = mk('a', 10);
+    const klein = buildExamQuestions().length;
+    return { sizeOk, dupOk, allTopics, klein };
   });
-  chk(r.n === 30 && r.s === 0, 'Blueprint: fehlender Block wird umverteilt (weiterhin 30 Fragen)');
+  chk(r.sizeOk, 'Prüfung: jede Simulation hat genau 30 Fragen');
+  chk(r.dupOk, 'Prüfung: keine Frage doppelt in einer Simulation');
+  chk(r.allTopics, 'Prüfung: kleine Themen sind vollständig vertreten');
+  chk(r.klein === 10, 'Prüfung: kleiner Katalog -> alle Fragen');
+}
+
+// 7c) Eigene Inhalte: CSV- und JSON-Import
+{
+  const p = await page();
+  await p.goto(BASE, { waitUntil: 'networkidle' });
+  const r = await p.evaluate(() => {
+    const csv = 'Thema;Frage;Antwort;Erklärung;Falsch 1\nEnglisch;Hund;dog\nEnglisch;Katze;cat\nEnglisch;Haus;house\n' +
+      'Städte;Hauptstadt Italien?;Rom;Seit 1871.;Mailand;Turin\n# Kommentar\nkaputt\nHund;dog';
+    const a = parseContentText(csv, 'x.csv');
+    const b = parseContentText(csv, 'x.csv');
+    const single = parseContentText('Solo;Eine Frage;Eine Antwort', 'y.txt');
+    const json = parseContentText(JSON.stringify({ QUESTIONS: [
+      { topic: 't', question: 'Q1', options: ['a', 'b'], correct: [1], explanation: 'e' },
+      { topic: 't', question: 'kaputt', options: ['a'], correct: [5] }] }), 'z.json');
+    let err = '';
+    try { parseContentText('', 'leer.csv'); } catch (e) { err = e.message; }
+    const hund = a.QUESTIONS.find(q => q.question === 'Hund');
+    const rom = a.QUESTIONS.find(q => q.question === 'Hauptstadt Italien?');
+    return {
+      n: a.QUESTIONS.length, topics: Object.keys(a.TOPICS).length, skipped: a.skipped,
+      stabil: a.QUESTIONS.map(q => q.id).join() === b.QUESTIONS.map(q => q.id).join(),
+      hundOk: hund.type === 'single' && hund.options[hund.correct[0]] === 'dog' && hund.options.length === 4 && hund.options.includes('cat') && hund.options.includes('house'),
+      romOk: rom.options.length === 3 && rom.options[rom.correct[0]] === 'Rom' && rom.explanation === 'Seit 1871.',
+      zweiSpalten: a.QUESTIONS.some(q => q.question === 'Hund' && a.TOPICS[q.topic].name === 'Englisch')
+        && a.QUESTIONS.some(q => a.TOPICS[q.topic].name === 'Allgemein'),
+      singleType: single.QUESTIONS[0].type, jsonN: json.QUESTIONS.length, jsonSkipped: json.skipped, err,
+    };
+  });
+  // Die absichtlich kaputte JSON-Frage protokolliert der Validator als Fehler – erwartet.
+  for (let i = errors.length - 1; i >= 0; i--) if (/Frage-Fehler/.test(errors[i])) errors.splice(i, 1);
+  chk(r.n === 5 && r.topics === 3 && r.skipped === 1, `Import: CSV liest Zeilen, Kopf/Kommentar ignoriert, Fehlerzeile gezählt (${r.n}/${r.topics}/${r.skipped})`);
+  chk(r.stabil, 'Import: IDs sind stabil (erneuter Import behält Fortschritt)');
+  chk(r.hundOk, 'Import: ohne falsche Antworten entstehen Auswahlfragen aus dem Thema');
+  chk(r.romOk, 'Import: eigene falsche Antworten und Erklärung werden übernommen');
+  chk(r.zweiSpalten, 'Import: zwei Spalten -> Thema „Allgemein"');
+  chk(r.singleType === 'code', 'Import: einzelne Karte ohne Ablenker wird Eingabe-Aufgabe');
+  chk(r.jsonN === 1 && r.jsonSkipped === 1, 'Import: JSON übernimmt gültige, verwirft kaputte Fragen');
+  chk(/leer/.test(r.err), 'Import: leere Datei wird klar gemeldet');
+
+  // End-to-end: Datei über die Einstellungen importieren -> neue Fragen aktiv
+  await p.evaluate(() => go('settings'));
+  await p.waitForSelector('#btnContentImport');
+  await p.setInputFiles('#contentFile', { name: 'karten.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('Vokabeln;Baum;tree\nVokabeln;Wasser;water\nVokabeln;Feuer;fire\n') });
+  await p.waitForSelector('.modal-overlay .modal-btn.btn-primary');
+  await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle' }), p.click('.modal-overlay .modal-btn.btn-primary')]);
+  const nach = await p.evaluate(() => ({ n: QUESTIONS.length, t: Object.values(TOPICS).map(t => t.name).join() }));
+  chk(nach.n === 3 && nach.t === 'Vokabeln', `Import: nach dem Neuladen sind die eigenen Inhalte aktiv (${nach.n}, ${nach.t})`);
+  await p.evaluate(() => go('settings'));
+  await p.waitForSelector('#btnContentSample');
+  await p.click('#btnContentSample');
+  await p.waitForSelector('.modal-overlay .modal-btn.btn-danger');
+  await Promise.all([p.waitForNavigation({ waitUntil: 'networkidle' }), p.click('.modal-overlay .modal-btn.btn-danger')]);
+  const zurueck = await p.evaluate(() => QUESTIONS.length);
+  chk(zurueck > 3, 'Import: Beispiel-Inhalte lassen sich wiederherstellen');
 }
 
 // 8) Prüfung: Session-Persistenz (Reload mitten in der Prüfung -> Fortsetzen möglich)
@@ -556,12 +573,12 @@ async function page(opts = {}) {
   await antworteImExamen(p);
   await p.click('#examNext'); await p.waitForTimeout(100);
   await p.reload({ waitUntil: 'networkidle' });                 // mitten in der Prüfung neu laden
-  const saved = await p.evaluate(() => localStorage.getItem('adt_exam_session_v1'));
+  const saved = await p.evaluate(() => localStorage.getItem('lern_exam_session_v1'));
   chk(!!saved, 'Prüfung: laufende Session bleibt nach Reload erhalten');
 }
 
-// 8b) Prüfung verrät den Fragetyp nicht (Prüfungsordnung § 5: nur vollständig richtig zählt,
-//     und die echte Prüfung sagt nicht, wie viele Antworten richtig sind). Alle Auswahlfragen
+// 8b) Prüfung verrät den Fragetyp nicht (nur vollständig richtig zählt, und die Simulation
+//     sagt nicht, wie viele Antworten richtig sind). Alle Auswahlfragen
 //     erscheinen in der Simulation als Mehrfachauswahl – im Lernmodus bleibt der echte Typ.
 {
   const p = await page();
@@ -589,7 +606,7 @@ async function page(opts = {}) {
   // Gegenprobe Lernmodus: dort steht der echte Typ weiterhin dran.
   const q = await page();
   await q.goto(BASE, { waitUntil: 'networkidle' });
-  await q.evaluate(() => localStorage.removeItem('adt_exam_session_v1'));
+  await q.evaluate(() => localStorage.removeItem('lern_exam_session_v1'));
   await q.click('[data-act="mixed"]'); await q.waitForSelector('.q-card');
   const chips = [];
   for (let i = 0; i < 12 && !chips.some(c => /Einfachauswahl/.test(c)); i++) {
@@ -606,10 +623,10 @@ async function page(opts = {}) {
 // 9) Schema-Migration v1 -> v3: SRS-Felder werden aus altem Fortschritt warmgestartet
 {
   const p = await page();
-  await p.addInitScript(() => localStorage.setItem('adt_trainer_state_v1', JSON.stringify({
+  await p.addInitScript(() => localStorage.setItem('lern_state_v1', JSON.stringify({
     schemaVersion: 1, xp: 100, totalAnswered: 3, totalCorrect: 2,
     perQuestion: {
-      'tnm-001': { seen: 2, correct: 2, wrong: 0, lastResult: 'correct' },   // -> Box 3 (sicher), +7 Tage
+      'geo-001': { seen: 2, correct: 2, wrong: 0, lastResult: 'correct' },   // -> Box 3 (sicher), +7 Tage
       'gr-001':  { seen: 1, correct: 0, wrong: 1, lastResult: 'wrong' },      // -> Box 0, heute fällig
     }, badges: {},
   })));
@@ -622,7 +639,7 @@ async function page(opts = {}) {
   // Version nicht fest verankern (sie waechst mit dem Datenmodell) – gefordert ist,
   // dass die Kette bis zur aktuellen Version durchlaeuft und der Warmstart stimmt.
   const okMig = st.schemaVersion >= 3
-    && st.perQuestion['tnm-001'].box === 3 && st.perQuestion['tnm-001'].due > today
+    && st.perQuestion['geo-001'].box === 3 && st.perQuestion['geo-001'].due > today
     && st.perQuestion['gr-001'].box === 0 && st.perQuestion['gr-001'].due === today;
   chk(okMig, 'Migration v1->v3: Box/Fälligkeit aus altem Fortschritt warmgestartet');
   chk(st.reports && typeof st.reports === 'object' && !Object.keys(st.reports).length,
@@ -793,7 +810,7 @@ async function page(opts = {}) {
   await p.waitForSelector('.today-card');
   const after = await p.textContent('.today-main .txt p');
   chk(/1 \/ 10 Fragen/.test(after), 'Tagesziel: nach 1 Antwort steht 1/10');
-  const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('adt_today') || '{}').count);
+  const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('lern_today') || '{}').count);
   chk(stored === 1, 'Tagesziel: heutiger Zähler lokal gespeichert');
 }
 
@@ -807,8 +824,8 @@ async function page(opts = {}) {
   await p.click('.goal-chip[data-goal="20"]');
   await p.click('#onboardStart');
   await p.waitForSelector('.modal-overlay.onboard', { state: 'detached' });
-  const goal = await p.evaluate(() => localStorage.getItem('adt_daily_goal'));
-  const flag = await p.evaluate(() => localStorage.getItem('adt_onboarded'));
+  const goal = await p.evaluate(() => localStorage.getItem('lern_daily_goal'));
+  const flag = await p.evaluate(() => localStorage.getItem('lern_onboarded'));
   chk(goal === '20' && flag === '1', 'Onboarding: Ziel (20) + Flag gesetzt');
   const ring = await p.textContent('.today-main .txt p');
   chk(/\/ 20 Fragen/.test(ring), 'Onboarding: Startseite übernimmt das gewählte Ziel');
@@ -822,7 +839,7 @@ async function page(opts = {}) {
 // 17) Härtung: unbekannte Frage-IDs in perQuestion werden verworfen, echte behalten
 {
   const p = await page();
-  await p.addInitScript(() => localStorage.setItem('adt_trainer_state_v1', JSON.stringify({
+  await p.addInitScript(() => localStorage.setItem('lern_state_v1', JSON.stringify({
     schemaVersion: 2,
     perQuestion: { 'gr-001': { seen: 1, correct: 1, box: 1, due: '2020-01-01' }, 'BOGUS-XYZ': { seen: 9, correct: 9 } },
     badges: {},
@@ -939,7 +956,7 @@ async function page(opts = {}) {
   const p = await page();
   await p.goto(BASE, { waitUntil: 'networkidle' });
   await p.waitForSelector('.level-card');
-  await p.evaluate(() => { if (window.ADTSync) ADTSync.setCode('ADT-AAAAA-BBBBB-CCCCC'); });
+  await p.evaluate(() => { if (window.LernSync) LernSync.setCode('LRN-AAAAA-BBBBB-CCCCC'); });
   await p.click('[data-act="settings"]');
   await p.waitForSelector('#btnDeleteCloud');
   chk(true, 'Cloud löschen: Button erscheint im verbundenen Zustand');
@@ -947,7 +964,7 @@ async function page(opts = {}) {
   await p.waitForSelector('.modal-card[role="dialog"]');
   chk(true, 'Cloud löschen: Bestätigungs-Dialog erscheint');
   await p.click('.modal-overlay .modal-btn.btn-ghost'); // Abbrechen (kein Netzaufruf)
-  await p.evaluate(() => { if (window.ADTSync) ADTSync.setCode(null); });
+  await p.evaluate(() => { if (window.LernSync) LernSync.setCode(null); });
 }
 
 // 23) Statistik: Seite rendert + Prüfungs-Historie wird geführt
@@ -1014,13 +1031,20 @@ async function page(opts = {}) {
   await q.waitForFunction(() => /ungültig|erreichbar/i.test((document.getElementById('gateErr') || {}).textContent || ''));
   // Der Testkatalog ist vorab hinterlegt (siehe seed-content.mjs) – entscheidend ist, dass ein
   // falscher Code NICHTS Neues speichert (die Demo-Inhalte tauchen also nicht auf).
-  chk(!/\bx1\b/.test(await q.evaluate(() => localStorage.getItem('adt_content_v1') || '')), 'Gate: falscher Code speichert keine Inhalte');
+  chk(!/\bx1\b/.test(await q.evaluate(() => localStorage.getItem('lern_content_v1') || '')), 'Gate: falscher Code speichert keine Inhalte');
 
   // Ohne freigeschaltete Inhalte blockiert der Schutz die App wirklich (kein Durchkommen).
-  const g = await page({ seeded: false });
+  const g = await page({ seeded: false, gated: true });
   await g.goto(BASE, { waitUntil: 'networkidle' });
   await g.waitForSelector('#gateCode');
   chk(!(await g.$('.level-card')), 'Gate: ohne freigeschaltete Inhalte bleibt die App gesperrt');
+  chk(!!(await g.$('#gateImport')), 'Gate: eigene Inhalte importieren ist als Ausweg angeboten');
+
+  // Standard (Schutz aus): App startet direkt mit den Beispiel-Inhalten
+  const o = await page({ seeded: false });
+  await o.goto(BASE, { waitUntil: 'networkidle' });
+  await o.waitForSelector('.level-card');
+  chk(!(await o.$('#gateCode')), 'Gate: ohne Schutz startet die App direkt');
 }
 
 // 26) Frage melden („fragwürdig"): Knopf im Quiz, Sammelansicht, Notiz, Aufheben
@@ -1178,7 +1202,7 @@ async function page(opts = {}) {
     }));
     await q.goto(BASE, { waitUntil: 'networkidle' });
     const id2 = await q.evaluate(() => {
-      localStorage.setItem('adt_content_code', 'test-zugangscode-lang');
+      localStorage.setItem('lern_content_code', 'test-zugangscode-lang');
       const x = QUESTIONS[1];
       setReported(x.id, true, 'Tippfehler');
       go('reports');
@@ -1204,7 +1228,7 @@ async function page(opts = {}) {
     }));
     await q2.goto(BASE, { waitUntil: 'networkidle' });
     const qid3 = await q2.evaluate(() => {
-      localStorage.setItem('adt_content_code', 'test-zugangscode-lang');
+      localStorage.setItem('lern_content_code', 'test-zugangscode-lang');
       const x = QUESTIONS.find(y => Array.isArray(y.options) && y.options.length);
       SESSION = { mode: 'mixed', topic: null, questions: [x], optionOrders: [x.options.map((_, i) => i)], idx: 0, picks: [new Set()], checked: [false], correctFlags: [null] };
       go('quiz');
@@ -1233,7 +1257,7 @@ async function page(opts = {}) {
     }));
     await e.goto(BASE, { waitUntil: 'networkidle' });
     await e.evaluate(() => {
-      localStorage.setItem('adt_content_code', 'test-zugangscode-lang');
+      localStorage.setItem('lern_content_code', 'test-zugangscode-lang');
       setReported(QUESTIONS[2].id, true, '');
       go('reports');
     });
@@ -1262,7 +1286,7 @@ async function page(opts = {}) {
   chk(decodeURIComponent(new URL(long).searchParams.get('body')).includes('gekürzt'), 'Issue: Kürzung wird im Text gesagt');
 
   // Ohne konfiguriertes Repo bleiben die Knöpfe weg (keine toten Wege in der Oberfläche)
-  await p.evaluate(() => { window.ADT_CONFIG.feedbackRepo = ''; go('reports'); });
+  await p.evaluate(() => { window.APP_CONFIG.feedbackRepo = ''; go('reports'); });
   await p.waitForSelector('.report-item');
   chk(!(await p.$('[data-issue]')) && await p.evaluate(() => issueForReport(reportedList()[0]) === ''),
     'Issue: ohne Zielrepo kein Knopf und kein Link');

@@ -1,5 +1,5 @@
 /*
- * Cloud-Sync für den ADT Trainer
+ * Cloud-Sync für den Lern-Trainer
  * ------------------------------------------------------------------
  * Offline-first: Die lokale Speicherung (localStorage) bleibt maßgeblich.
  * Diese Schicht gleicht den Fortschritt zusätzlich mit einem Supabase-
@@ -16,11 +16,11 @@
 (function () {
   "use strict";
 
-  const CODE_KEY = "adt_sync_code";
-  const LAST_KEY = "adt_sync_last";
-  const PENDING_KEY = "adt_sync_pending";   // ausstehender Abgleich (offline/Fehler)
+  const CODE_KEY = "lern_sync_code";
+  const LAST_KEY = "lern_sync_last";
+  const PENDING_KEY = "lern_sync_pending";   // ausstehender Abgleich (offline/Fehler)
 
-  const cfg = () => (window.ADT_CONFIG || {});
+  const cfg = () => (window.APP_CONFIG || {});
   function isConfigured() {
     const c = cfg();
     return !!(c.supabaseUrl && c.supabaseAnonKey && /^https:\/\/.+\.supabase\.co/.test(c.supabaseUrl));
@@ -33,7 +33,7 @@
   function hasPending() { try { return localStorage.getItem(PENDING_KEY) === "1"; } catch { return false; } }
   function setPending(on) { try { on ? localStorage.setItem(PENDING_KEY, "1") : localStorage.removeItem(PENDING_KEY); } catch {} }
 
-  // Menschlich lesbaren, kryptografisch zufälligen Code erzeugen: ADT-XXXXX-XXXXX-XXXXX
+  // Menschlich lesbaren, kryptografisch zufälligen Code erzeugen: LRN-XXXXX-XXXXX-XXXXX
   function generateCode() {
     const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // ohne I,L,O,0,1 (Verwechslungsgefahr)
     const bytes = new Uint8Array(15);
@@ -43,16 +43,16 @@
       if (i > 0 && i % 5 === 0) out += "-";
       out += alphabet[bytes[i] % alphabet.length];
     }
-    return "ADT-" + out;
+    return "LRN-" + out;
   }
 
   function normalizeCode(raw) {
     if (!raw) return "";
     let s = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (s.startsWith("ADT")) s = s.slice(3);
+    if (s.startsWith("LRN")) s = s.slice(3);
     // in Gruppen zu 5 formatieren
     const groups = s.match(/.{1,5}/g) || [];
-    return "ADT-" + groups.join("-");
+    return "LRN-" + groups.join("-");
   }
 
   // ---- Merge zweier Zustände (monoton, verlustarm) ----
@@ -94,7 +94,7 @@
       if (boxA > boxB) { box = boxA; due = pa.due || null; }
       else if (boxB > boxA) { box = boxB; due = pb.due || null; }
       else { box = boxA; const da = pa.due || "", db = pb.due || ""; due = (da >= db ? da : db) || null; }
-      // Beobachtungsdaten (Stufe 1 des Bereitschafts-Konzepts, siehe workbook.md):
+      // Beobachtungsdaten (für die Bestehens-Prognose):
       // `first` = Ergebnis des ersten Kontakts. Es kann nur EINEN ersten Versuch geben;
       // liegt er auf beiden Geräten verschieden vor (z. B. weil eine Seite ihn noch
       // nicht kannte), gewinnt bewusst „wrong" – die konservative Annahme.
@@ -308,7 +308,7 @@
     } catch (e) { return null; }
   }
 
-  window.ADTSync = {
+  window.LernSync = {
     isConfigured, getCode, setCode, getLastSynced,
     generateCode, normalizeCode, mergeStates,
     syncNow, overwriteRemote,

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test-Runner für den ADT Trainer. Grün = auslieferbar.
+# Test-Runner für den Lern-Trainer. Grün = auslieferbar.
 # Nutzung: bash tests/run.sh
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

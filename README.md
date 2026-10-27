@@ -1,39 +1,80 @@
-# ADT Trainer – Prüfungsvorbereitung Tumordokumentar/in
+# Lern-Trainer – Auswendig lernen, beliebige Inhalte
 
-Eine kleine, robuste **Lern-App fürs iPhone** zur Vorbereitung auf die
-ADT-Prüfung **„Tumordokumentar/in"**. Sie läuft als **PWA** (Progressive
-Web App) direkt in Safari, lässt sich zum Home-Bildschirm hinzufügen und
+Eine kleine, robuste **Lern-App fürs Handy**, mit der du **beliebige Inhalte** auswendig
+lernst: Vokabeln, Fachbegriffe, Formeln, Prüfungsstoff. Sie läuft als **PWA**
+(Progressive Web App) direkt im Browser, lässt sich zum Home-Bildschirm hinzufügen und
 funktioniert danach **komplett offline** – ganz ohne App Store.
+
+## Schnellstart (2 Minuten)
+
+1. App öffnen → mit den **Beispiel-Fragen** loslegen.
+2. Eigene Inhalte: **Einstellungen → Lerninhalte → Vorlage herunterladen**.
+3. Vorlage in Excel/Numbers/Texteditor ausfüllen, als CSV speichern.
+4. **Einstellungen → Lerninhalte → Eigene Inhalte importieren** → Datei wählen.
 
 ## Was die App kann
 
+- **Eigene Inhalte importieren** – CSV/Text oder JSON, direkt in der App, ohne Programmieren
 - **Gemischtes Training** – zufällige Fragen aus allen Themen
-- **Nach Thema lernen** – gezielt einzelne Themengebiete üben, mit Fortschrittsbalken je Thema
-- **Schwachstellen wiederholen** – automatisch die noch nicht sicher beherrschten Fragen
-- **Prüfungssimulation** – 30 Fragen, bestanden ab 50 % (wie in der echten Prüfung)
-- **Prüfungsgetreues Format** – Multiple-Choice mit *mehreren* richtigen Antworten; nur *vollständig* richtig zählt (kein Teilpunkt, § 5 der Prüfungsordnung)
+- **Nach Thema lernen** – gezielt einzelne Themen üben, mit Fortschrittsbalken je Thema
+- **Spaced Repetition** (Leitner) – jede Frage kommt zurück, kurz bevor du sie vergisst
+- **Schwachstellen wiederholen** – die noch nicht sicher beherrschten Fragen
+- **Antworten eintippen** – aktiver Abruf statt Wiedererkennen (Groß-/Kleinschreibung egal)
+- **Prüfungssimulation** – bis zu 30 Fragen aus allen Themen, Timer, bestanden ab 50 %
 - **Erklärung zu jeder Frage** – der Lerninhalt wird vermittelt, nicht nur abgefragt
-- **Gamification** – XP, Level, Tages-Serie (Streak) und Erfolge/Badges
-- **Fragen als „fragwürdig" melden** – ein Tipp unter der Frage, optional mit Kommentar (am Laptop: Taste **M**). Ist der direkte Weg eingerichtet, entsteht daraus **sofort ein GitHub-Issue**; gesammelt wird alles zusätzlich unter *Einstellungen → Gemeldete Fragen*
-- **Meldungen als Backlog** – der Export ist eine Liste zum Abhaken; `node tools/reports-to-backlog.mjs <export.md>` pflegt daraus [`docs/fragen-backlog.md`](docs/fragen-backlog.md)
-- **Updates ohne Neuinstallieren** – *Einstellungen → App-Version → „Nach Updates suchen"* holt die neueste Fassung von GitHub Pages
-- **Fortschritt bleibt gespeichert** (lokal auf dem Gerät, kein Konto, kein Server)
+- **Gamification** – XP, Level, Tagesziel, Tages-Serie und Erfolge
+- **Lern-Timer** (Pomodoro), **Dark Mode**, große Schrift, Tastaturbedienung am Laptop
+- **Fragen melden** – unklare Fragen markieren, sammeln, exportieren
+- **Fortschritt bleibt gespeichert** – lokal auf dem Gerät; optional Geräte-Sync
 
-## Auf dem iPhone installieren
+## Eigene Inhalte: Format
 
-1. Die App-URL in **Safari** öffnen (siehe Abschnitt *Hosting*).
-2. Unten auf das **Teilen-Symbol** tippen.
-3. **„Zum Home-Bildschirm"** wählen → *Hinzufügen*.
-4. Fertig – die App startet im Vollbild und läuft offline.
+**Einfach (CSV/Text)** – eine Karte pro Zeile, Trenner `;` (oder Tab bzw. `,`):
+
+```
+Thema;Frage;Antwort;Erklärung;Falsch 1;Falsch 2;Falsch 3
+Englisch;der Hund;dog
+Englisch;die Katze;cat
+Hauptstädte;Hauptstadt von Frankreich?;Paris;Paris liegt an der Seine.;Lyon;Marseille;Nizza
+```
+
+- Pflicht sind nur **Thema, Frage, Antwort**. Zwei Spalten (`Frage;Antwort`) gehen auch → Thema „Allgemein".
+- **Ohne falsche Antworten** baut die App Auswahl-Fragen aus den Antworten anderer Karten
+  desselben Themas. Gibt es keine, wird die Karte zur Eingabe-Aufgabe („Antwort eintippen").
+- Kopfzeile und Zeilen mit `#` am Anfang werden ignoriert. Felder mit `;` in Anführungszeichen setzen.
+- **Erneuter Import** derselben Fragen behält den Lernfortschritt (IDs entstehen aus Thema + Frage).
+- **Zurück zu den Beispielen:** Einstellungen → Lerninhalte → „Beispiel-Inhalte wiederherstellen".
+
+**Profi (JSON)** – alle Fragetypen (Einfach-/Mehrfachauswahl, Zahl, Text-Eingabe):
+
+```json
+{
+  "TOPICS": { "bio": { "name": "Biologie", "icon": "🧬", "color": "#3fa796" } },
+  "QUESTIONS": [
+    { "id": "bio-1", "topic": "bio", "difficulty": 1, "type": "multi",
+      "question": "Welche sind Säugetiere?", "options": ["Wal", "Hai", "Fledermaus"],
+      "correct": [0, 2], "explanation": "Wale und Fledermäuse säugen ihre Jungen." }
+  ]
+}
+```
+
+Das vollständige Format (inkl. `numeric` und `code`) steht im Kopf von
+[`data/questions.js`](data/questions.js). Wer die App für alle mit festen Inhalten ausliefern
+will, ersetzt dort einfach die Beispiel-Fragen.
+
+## Installieren (iPhone/Android)
+
+1. Die App-URL im Browser öffnen (iPhone: **Safari**).
+2. **Teilen** → **„Zum Home-Bildschirm"** (Android: Menü → „App installieren").
+3. Fertig – die App startet im Vollbild und läuft offline.
 
 ## Hosting (z. B. kostenlos über GitHub Pages)
 
 Der komplette App-Code liegt im **Repository-Root** (`index.html` usw.). Zum
 Bereitstellen genügt ein beliebiger statischer Webserver (HTTPS erforderlich,
 damit der Offline-Modus/Service Worker funktioniert). Mit **GitHub Pages**:
-Repository-Einstellungen → *Pages* → *Deploy from a branch* → gewünschten
-Branch und Ordner `/(root)` wählen → *Save*. Danach ist die App unter der
-Pages-URL erreichbar.
+Repository-Einstellungen → *Pages* → *Deploy from a branch* → Branch und Ordner
+`/(root)` wählen → *Save*.
 
 Lokal testen:
 
@@ -94,7 +135,7 @@ Passwort/Login nötig.
 4. In **[`config.js`](config.js)** eintragen und committen/pushen:
 
    ```js
-   window.ADT_CONFIG = {
+   window.APP_CONFIG = {
      supabaseUrl: "https://DEINPROJEKT.supabase.co",
      supabaseAnonKey: "eyJhbGciOi… (langer anon-Key)",
    };
@@ -122,7 +163,7 @@ im **SQL Editor** ausführen. Ersetzt `sync_pull`, `sync_push` und `push_save` p
 ## Lern-Erinnerungen (Web Push, optional)
 
 Tägliche Push-Erinnerung ans Üben. Auf dem **iPhone** funktioniert Web Push nur,
-wenn die App **zum Home-Bildschirm hinzugefügt** ist (iOS 16.4+) und die Nutzerin
+wenn die App **zum Home-Bildschirm hinzugefügt** ist (iOS 16.4+) und man
 Benachrichtigungen erlaubt. Der Versand läuft über eine **Supabase Edge Function**,
 die stündlich per Zeitplan prüft, wer zur eingestellten Uhrzeit dran ist.
 
@@ -165,18 +206,13 @@ aufrufst.
 > Solange `vapidPublicKey` in `config.js` leer ist oder die Server-Teile fehlen,
 > zeigt die App im Erinnerungs-Bereich einen Hinweis – der Rest funktioniert normal.
 
-## Fragen ergänzen oder anpassen
+## Zugangsgeschützte Inhalte (optional)
 
-Alle Fragen stehen in **[`data/questions.js`](data/questions.js)**.
-Jede Frage hat ein einfaches Format (Thema, Schwierigkeit, Typ, Optionen,
-richtige Antworten, Erklärung). Neue Fragen einfach an das Array anhängen –
-die App validiert das Format beim Start und meldet Fehler in der Konsole.
-
-> **Wichtig zum Inhalt:** Die aktuell enthaltenen Fragen sind sorgfältig nach
-> stabilen Fachstandards (UICC/TNM, ICD-O-3, ICD-10, ADT/GEKID-Basisdatensatz,
-> § 65c SGB V) formuliert und dienen dem Üben. Sie sind **nicht** die offiziellen
-> ADT-Prüfungsfragen. Für maximale Passgenauigkeit sollten die offiziellen
-> Kursunterlagen/Beispielfragen eingearbeitet werden (siehe unten).
+Wer Inhalte nicht öffentlich ins Repo legen will, kann sie in Supabase ablegen und nur
+gegen einen **Zugangscode** ausgeben: [`supabase/content-gate.sql`](supabase/content-gate.sql)
+ausführen, Inhalte (`{ TOPICS, QUESTIONS }`) einspielen, in [`config.js`](config.js)
+`contentGated: true` setzen. Die App verlangt dann beim ersten Start den Code.
+Prüfen lässt sich eine Inhalts-Datei vorab mit `node tools/validate-content.mjs <datei.json>`.
 
 ## Fragen-Feedback: von der Meldung zur korrigierten Frage
 
@@ -206,25 +242,22 @@ wo man war. Der komplette Weg:
 
    Zielrepo für den Formular-Weg ist `feedbackRepo` in [`config.js`](config.js).
 
-   > **Das Zielrepo muss privat sein.** Der Issue-Text enthält den Fragetext, und die
-   > Lerninhalte sind zugangsgeschützt (`contentGated: true`). Voreingestellt ist deshalb das
-   > private `allawallabedalla/Secret` – nicht das öffentliche App-Repo. Ist `feedbackRepo`
-   > leer, erscheinen die Knöpfe gar nicht.
+   > Ist `feedbackRepo` leer (Standard), erscheinen die Knöpfe gar nicht. Bei
+   > zugangsgeschützten Inhalten ein **privates** Repo wählen – der Issue-Text enthält den Fragetext.
 
 5. **Oder als Datei ins Repo übernehmen**:
 
    ```bash
-   node tools/reports-to-backlog.mjs ~/Downloads/adt-trainer-gemeldete-fragen-2026-08-06.md
+   node tools/reports-to-backlog.mjs ~/Downloads/lern-trainer-gemeldete-fragen-2026-08-06.md
    ```
 
-   Das pflegt **[`docs/fragen-backlog.md`](docs/fragen-backlog.md)**: neue IDs kommen
+   Das pflegt `docs/fragen-backlog.md` (wird beim ersten Lauf angelegt): neue IDs kommen
    unter *Offen* dazu, **abgehakte Einträge bleiben abgehakt** (unter *Erledigt*),
    **vorhandene Einträge werden nie überschrieben** – Notizen von Hand bleiben stehen.
    Denselben Export mehrfach einspielen ändert nichts.
-6. **Korrigieren**: Die Frage in der Inhalts-Quelle anpassen und neu ausliefern – bei
-   `contentGated: true` liegen die Fragen **nicht** im Repo, sondern in Supabase
-   (gebaut über die Pipeline im `Secret`-Repo, siehe `supabase/content-gate.sql`).
-   Ohne Zugangsschutz: direkt in [`data/questions.js`](data/questions.js).
+6. **Korrigieren**: Die Frage in der Quelle anpassen – in der eigenen CSV/JSON-Datei (dann
+   neu importieren), in [`data/questions.js`](data/questions.js) oder bei Zugangsschutz in
+   Supabase (siehe `supabase/content-gate.sql`).
 7. **Abhaken** im Backlog – erledigt wird nur durchs Häkchen, nichts verschwindet von allein.
 
 > **Wo liegen die Meldungen?** Lokal im `localStorage` (im selben Datensatz wie der
@@ -266,7 +299,7 @@ Formular-Weg zurück und sagt in einem Satz, warum.
 ## Updates ausliefern (GitHub Pages)
 
 Ein Push auf den Pages-Branch **ist** das Deployment – eine Neuinstallation auf dem
-iPhone ist nie nötig. Bei den Nutzerinnen kommt die neue Fassung so an:
+iPhone ist nie nötig. Bei den Nutzenden kommt die neue Fassung so an:
 
 - **Von allein**: Der Service Worker lädt die neue Shell im Hintergrund; spätestens beim
   übernächsten Start läuft sie. Liegt ein neuer Service Worker bereit, erscheint zusätzlich
@@ -274,11 +307,6 @@ iPhone ist nie nötig. Bei den Nutzerinnen kommt die neue Fassung so an:
 - **Sofort auf Wunsch**: *Einstellungen → App-Version → „Nach Updates suchen"*. Die App holt
   die Shell frisch, vergleicht die ausgelieferte mit der laufenden `APP_VERSION` und bietet
   das Neuladen an. Der Lernfortschritt bleibt dabei erhalten.
-
-> **Einmaliger Sonderfall:** Ein Gerät, auf dem noch eine Version **vor 0.31.0** läuft, kennt
-> den Knopf naturgemäß nicht. Für diesen einen Sprung: App aus dem App-Umschalter wischen und
-> zweimal öffnen (erster Start lädt im Hintergrund, zweiter startet die neue Fassung). Danach
-> genügt immer der Knopf.
 
 **Beim Ausliefern zu beachten:** `APP_VERSION` in [`js/app.js`](js/app.js) erhöhen – die App
 und `sw.js` vergleichen genau diesen Wert (`sw.js` liest die Deklarationszeile per Regex aus
@@ -292,20 +320,22 @@ obwohl die Dateien frisch geholt wurden.
 ├── index.html              App-Grundgerüst
 ├── manifest.webmanifest    PWA-Manifest (Name, Icons, Standalone)
 ├── sw.js                   Service Worker (Offline-Cache)
-├── config.js               Cloud-Sync-Konfiguration (Supabase-Werte)  ← für Sync eintragen
+├── config.js               Konfiguration (Sync, Erinnerungen, Zugangsschutz)
 ├── css/styles.css          Design (Light/Dark, iOS-optimiert)
-├── js/app.js               App-Logik (Quiz-Engine, Gamification)
+├── js/app.js               App-Logik (Quiz-Engine, Import, Gamification)
 ├── js/sync.js              Cloud-Sync (Merge-Logik, Supabase-Anbindung)
-├── data/questions.js       Fragen-Datenbank  ← hier Inhalte pflegen
-├── docs/fragen-backlog.md  Arbeitsliste der gemeldeten Fragen (per Werkzeug gepflegt)
-├── tools/                  Werkzeuge (u. a. reports-to-backlog.mjs)
+├── data/questions.js       Beispiel-Inhalte  ← hier feste Inhalte pflegen
+├── supabase/               Optionale Server-Teile (SQL, Edge Functions)
+├── tools/                  Werkzeuge (Backlog aus Meldungen, Inhalts-Validierung)
 ├── tests/                  Testnetz – `bash tests/run.sh`
 └── icons/                  App-Icons (PNG)
 ```
 
-## Grundlage
+## Tests
 
-Basiert auf der Prüfungsordnung „Tumordokumentar/in" der Arbeitsgemeinschaft
-Deutscher Tumorzentren e. V. (ADT), Stand 08/2022 (siehe PDF im Repo):
-schriftliche Prüfung, MC-Fragen mit mehrfach richtigen Antworten sowie
-Dokumentations-/Rechenaufgaben, 180 Minuten, bestanden ab 50 %.
+```bash
+bash tests/run.sh
+```
+
+Syntax, Fragen-Validierung, Unit-Tests und Browser-Tests (Playwright) inkl. Import,
+Offline-Modus und Update-Weg. Details: [`tests/README.md`](tests/README.md).
